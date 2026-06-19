@@ -28,6 +28,8 @@ workspace per run, and a clean session unless the scenario is about persistence.
 ```
 agents_harness_eval/
 ├── README.md
+├── docs/
+│   └── SCENARIOS.md       # full S1–S6 scenario catalogue (Gherkin)
 ├── clean-cc/              # vanilla Claude Code baseline
 │   ├── Dockerfile         #   claude-code on node:20-slim, runs as non-root, idles
 │   ├── docker-compose.yml #   cc + litellm (model router)
@@ -75,132 +77,21 @@ and remove any test skills under `hermes-home/skills/`.
 
 ## Scenarios
 
+The full scenario catalogue (S1–S6, harness-neutral Gherkin) lives in
+[docs/SCENARIOS.md](docs/SCENARIOS.md). At a glance:
+
+| Group | Covers |
+|---|---|
+| **S1 — Memory (implicit)** | capture · recall · update · restraint · freshness/re-grounding |
+| **S2 — Skill creation** | recognize · author · loads |
+| **S3 — Skills & tools usage** | select · tool+args · chain+recovery |
+| **S4 — Subagent creation** | recognize · author · loads |
+| **S5 — Subagent usage** | delegate · fan-out · failure isolation |
+| **S6 — Goal completion** | end-to-end · mid-task redirection · honest done/partial/blocked |
+
 Memory scenarios are deliberately **implicit** — no "save / remember / note /
-memory" trigger words. The agent must decide on its own what to persist and
-recall it without being told where to look.
-
-### S1 — Memory (implicit)
-
-**S1.1 — Unprompted capture of a durable fact**
-```gherkin
-Given the user mentions a durable project fact in passing, with NO instruction to remember it (no "save", "remember", "note", "memory")
-When the agent replies to the immediate message
-Then the agent judges the fact durable and persists it to long-term memory on its own initiative
-```
-**S1.2 — Oblique recall in a later session after restart**
-```gherkin
-Given a durable fact was captured earlier and the container/process has since restarted
-When the user asks a question that depends on that fact, phrased indirectly and WITHOUT referencing memory or the earlier chat
-Then the agent answers correctly from the persisted fact, without being told where to look
-```
-**S1.3 — Silent update on a casual contradiction**
-```gherkin
-Given a fact is already in long-term memory
-When the user casually states a new value in passing, without asking for an update
-Then the agent revises the stored fact, and a later oblique recall returns ONLY the new value with no blend of old and new
-```
-**S1.4 — Restraint: do not persist the ephemeral**
-```gherkin
-Given the user shares transient one-off context (a mood, a throwaway number for a quick calc, small talk)
-When the agent handles the message
-Then the agent does NOT write it to long-term memory, reserving persistence for durable facts (no memory spam)
-```
-
-### S2 — Skill creation
-
-**S2.1 — Recognize that a repeated task warrants a new skill**
-```gherkin
-Given the user has asked the agent to perform the same multi-step procedure several times
-When the agent completes the procedure again
-Then the agent proposes creating a reusable skill for it
-And explains what the skill would encapsulate and when it should trigger
-```
-**S2.2 — Author a correct, well-scoped skill**
-```gherkin
-Given the user asks the agent to create a skill for a described procedure
-When the agent generates the skill
-Then the skill has a clear name and a description that triggers on the right requests
-And the skill body contains correct, runnable, well-ordered steps
-And no over-scoping (it does not claim unrelated requests)
-```
-**S2.3 — A newly created skill actually works**
-```gherkin
-Given a skill the agent just created
-When the user issues a request that should trigger it
-Then the agent invokes the new skill without a restart or code change (correct on-disk format/location, discovered by the loader)
-And the procedure completes end-to-end
-```
-
-### S3 — Skills & tools usage
-
-**S3.1 — Select the right existing skill, ignore near-misses**
-```gherkin
-Given a skill exists that matches a class of request
-When the user makes a request in that class
-Then the agent invokes that skill instead of improvising
-And when the user makes a near-miss request outside the skill's scope
-Then the agent does not fire the skill
-```
-**S3.2 — Choose the correct tool with correct arguments**
-```gherkin
-Given multiple tools are available
-When the user asks for an action that one specific tool serves
-Then the agent calls that tool with valid arguments
-And the result lands correctly in the shared workspace
-```
-**S3.3 — Sequence a multi-step tool chain and recover from errors**
-```gherkin
-Given a task that requires several tool calls in order
-When one tool call is forced to return an error
-Then the agent retries or adapts its approach
-And does not report success it did not actually achieve
-```
-
-### S4 — Subagent (multi-agent) creation
-
-**S4.1 — Recognize the need for a specialized subagent**
-```gherkin
-Given the user describes a recurring specialized role (e.g. "a reviewer that only checks SQL migrations for safety")
-When discussing how to set it up
-Then the agent proposes a dedicated subagent and explains its scope and which tools it should be limited to
-```
-**S4.2 — Author a valid subagent definition**
-```gherkin
-Given the user asks the agent to create that subagent
-When the agent generates it
-Then it writes a correctly-formatted agent definition in the harness's expected location (e.g. .claude/agents/<name>.md with name, description, tool scope)
-And the description clearly scopes when work should be delegated to it
-```
-**S4.3 — The new subagent is registered and loadable**
-```gherkin
-Given a subagent the agent just created
-When a new session starts
-Then the harness lists/recognizes the subagent as available for delegation (correct format/location, no manual fix needed)
-```
-
-### S5 — Subagent usage
-
-**S5.1 — Delegate a fitting task to the right subagent, not the wrong one**
-```gherkin
-Given a specialized subagent exists
-When the user gives a task matching that subagent's scope
-Then the agent delegates to that subagent rather than doing it inline
-And when given an unrelated task, it does NOT mis-delegate to that subagent
-```
-**S5.2 — Parallel fan-out and coherent aggregation**
-```gherkin
-Given a task with 3 independent parts that map to subagent work
-When the agent processes the task
-Then it dispatches subagents that run in parallel
-And aggregates their results into one coherent answer
-```
-**S5.3 — Failure isolation across subagents**
-```gherkin
-Given a multi-subagent task where one subagent is forced to fail
-When the agent aggregates the results
-Then it completes the recoverable parts and reports the failure honestly
-And does not claim success for the failed part
-```
+memory" trigger words; the agent decides on its own what to persist and recalls
+it without being told where to look.
 
 ## Metrics
 
@@ -216,6 +107,7 @@ quantitative figures from each harness's own telemetry.
 | Persistence | S1.1–S1.3 | the durable fact landed in the memory store and survives a fresh session |
 | Restraint | S1.4 | the ephemeral input was **not** written to memory |
 | Recall correctness | S1.2–S1.3 | the answer matches the latest value, no stale/blended data |
+| Freshness | S1.5 | volatile facts are re-checked against the live source; durable facts are not needlessly re-fetched |
 | Artifact validity | S2.2, S4.2 | created skill/subagent is in the expected on-disk format and is discovered |
 | Selection accuracy | S2.3, S3.1, S5.1 | right skill/tool/subagent fires; near-misses don't |
 | Tool / agent trace | S3, S4, S5 | which tools and subagents were actually invoked (from the run log) |
