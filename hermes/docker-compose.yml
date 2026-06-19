@@ -1,0 +1,66 @@
+#
+# Hermes Agent — Docker Compose (eval harness)
+#
+# All Hermes state (config, skills, memory, sessions, cron, hooks, plugins)
+# lives in ./hermes-home/ so the clean baseline is version-tracked. Runtime
+# bloat (caches, *.db, sessions, bundled skills) is gitignored — the container
+# regenerates it on first start.
+#
+# Model: configured in hermes-home/config.yaml. The eval baseline points at
+# AWS Bedrock Claude Sonnet 4.6. Repoint it at any backend to keep both
+# harnesses on the same model (see ../README.md).
+#
+# AWS auth: we inject STATIC creds (env) so boto3 never writes the SSO token
+# cache. This fixes the "Read-only file system: /opt/data/.aws/sso/cache"
+# error that recurs ~hourly when the mounted ~/.aws is read-only and the SSO
+# token expires. Refresh the temp creds in .env via `aws sso login` + export.
+#
+# First-time setup:
+#   cp .env.example .env          # then fill AWS creds
+#   printf "HERMES_UID=$(id -u)\nHERMES_GID=$(id -g)\n" >> .env
+#
+# Usage:
+#   docker compose run --rm cli chat -q "hi"            # one-shot
+#   docker compose run --rm cli                         # interactive
+#   docker compose up -d gateway                        # warm process for the runner
+#   ../runners/run-hermes.sh LABEL "prompt"             # eval runner (+ metrics)
+
+x-common-env: &common-env
+  HERMES_UID: ${HERMES_UID:-10000}
+  HERMES_GID: ${HERMES_GID:-10000}
+  AWS_REGION: ${AWS_REGION_NAME:-eu-central-1}
+  AWS_DEFAULT_REGION: ${AWS_REGION_NAME:-eu-central-1}
+  # Static creds take precedence over the SSO profile -> no SSO cache writes.
+  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+  AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+
+x-common-volumes: &common-volumes
+  - ./hermes-home:/opt/data         # tracked hermes state (config, skills, memory, ...)
+  - ./workspace:/workspace          # empty project workspace (clean baseline)
+
+services:
+
+  # cli — interactive chat or one-shot queries (`docker compose run --rm cli ...`)
+  cli:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-eval-cli
+    restart: "no"
+    stdin_open: true
+    tty: true
+    working_dir: /workspace
+    volumes: *common-volumes
+    environment:
+      <<: *common-env
+    command: []
+
+  # gateway — long-running agent; the eval runner uses it for fast `docker exec`
+  # calls and `hermes sessions export` (token/latency metrics).
+  gateway:
+    image: nousresearch/hermes-agent:latest
+    container_name: hermes-eval-gateway
+    restart: unless-stopped
+    volumes: *common-volumes
+    environment:
+      <<: *common-env
+    command: ["gateway", "run"]

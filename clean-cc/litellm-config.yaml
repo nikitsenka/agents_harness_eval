@@ -1,0 +1,19 @@
+# LiteLLM proxy — presents an Anthropic (/v1/messages) endpoint for Claude Code
+# and routes to a backing model. Claude Code sends model id
+# `claude-3-5-haiku-20241022`; the "*" catch-all maps it to the active backend.
+# Swap the harness's brain by repointing "*" at any model LiteLLM supports.
+model_list:
+  # Active backing model: AWS Bedrock Claude Sonnet 4.6 (cross-region profile).
+  - model_name: "*"
+    litellm_params:
+      model: bedrock/eu.anthropic.claude-sonnet-4-6
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_session_token: os.environ/AWS_SESSION_TOKEN
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY

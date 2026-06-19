@@ -1,0 +1,54 @@
+#
+# Clean Claude Code — vanilla harness baseline.
+#
+# `cc` is a bare Claude Code container (no soul, no project memory, no MCP,
+# no skills). It idles; the eval runner execs `claude -p ... --strict-mcp-config`
+# into it. `litellm` fronts the model so both harnesses hit the same backend.
+#
+# Model: edit litellm-config.yaml ("*" route) to swap the backend for both
+# harnesses. Baseline = Bedrock Sonnet 4.6.
+#
+# Setup:  cp .env.example .env   # fill AWS creds + a LITELLM_MASTER_KEY
+# Run:    docker compose up -d
+#         ../runners/run-cc.sh smoke "Reply with exactly: PONG"
+# Reset:  docker compose down && docker compose up -d   # wipes container memory
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: cc-eval-litellm
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-eu-central-1}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY}
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "127.0.0.1:4000:4000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:4000/health/liveliness').status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  cc:
+    build: .
+    image: agents-eval-cc:local
+    container_name: cc-eval
+    environment:
+      # Gateway mode -> route Claude Code through LiteLLM. No oauth needed.
+      ANTHROPIC_BASE_URL: http://litellm:4000
+      ANTHROPIC_AUTH_TOKEN: ${LITELLM_MASTER_KEY}
+      ANTHROPIC_MODEL: claude-3-5-haiku-20241022
+      ANTHROPIC_SMALL_FAST_MODEL: claude-3-5-haiku-20241022
+    volumes:
+      - ./workspace:/workspace      # empty clean workspace
+    working_dir: /workspace
+    command: ["sleep", "infinity"]
+    depends_on:
+      litellm:
+        condition: service_healthy

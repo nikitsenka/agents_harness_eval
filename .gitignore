@@ -1,0 +1,12 @@
+# Secrets
+**/.env
+.env
+
+# OS
+.DS_Store
+
+# Keep empty mounted workspaces tracked but ignore their runtime contents
+clean-cc/workspace/*
+!clean-cc/workspace/.gitkeep
+hermes/workspace/*
+!hermes/workspace/.gitkeep

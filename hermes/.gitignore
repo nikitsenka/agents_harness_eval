@@ -1,0 +1,9 @@
+# Secrets
+.env
+
+# Docker
+.env.local
+
+# macOS
+.DS_Store
+.idea
