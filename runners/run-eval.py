@@ -36,28 +36,33 @@ def ws_path(h, rel):
 
 
 # ---- reset / setup ----------------------------------------------------------
+CC_SUBTREE = {"workspace": "clean-cc/workspace",
+              "memory": "clean-cc/workspace/memory",
+              "skills": "clean-cc/workspace/.claude/skills"}
+
+
+def _git_restore(path):
+    # restore tracked seeded files + drop untracked/ignored run artifacts
+    sh(["bash", "-lc", f"git checkout -- {path} 2>/dev/null; git clean -fdx {path} >/dev/null 2>&1; true"])
+
+
 def reset(h, kinds):
     for kind in kinds:
-        if kind == "workspace":
-            wd = os.path.join(ROOT, HARNESS[h]["ws"])
-            for f in os.listdir(wd):
-                if f != ".gitkeep":
-                    p = os.path.join(wd, f)
-                    sh(["rm", "-rf", p])
-        elif kind == "memory":
-            if h == "hermes":
+        if h == "cc":
+            # clean-cc scaffolding (CLAUDE.md/.claude/memory) is seeded + tracked;
+            # restore it to the committed baseline rather than deleting it.
+            sub = CC_SUBTREE.get(kind)
+            if sub:
+                _git_restore(sub)
+        else:  # hermes — state lives in hermes-home; workspace is an empty mount
+            if kind == "workspace":
+                wd = os.path.join(ROOT, HARNESS[h]["ws"])
+                for f in os.listdir(wd):
+                    if f != ".gitkeep":
+                        sh(["rm", "-rf", os.path.join(wd, f)])
+            elif kind == "memory":
                 sh(["bash", "-lc", "rm -f hermes/hermes-home/memories/USER.md hermes/hermes-home/memories/*.lock"])
-            else:
-                _cc_exec(h, "find ~/.claude -path '*/memory/*.md' -delete 2>/dev/null; true")
-        elif kind == "skills":
-            if h == "cc":
-                _cc_exec(h, "rm -rf ~/.claude/skills/* /workspace/.claude/skills/* 2>/dev/null; true")
             # hermes skills are bundled+host-mounted; per-eval skill reset is best-effort, skipped.
-
-
-def _cc_exec(h, bash_cmd):
-    c = HARNESS[h]
-    return sh(["docker", "compose", "-f", c["compose"], "exec", "-T", c["svc"], "bash", "-lc", bash_cmd])
 
 
 def setup(h, files):
@@ -69,16 +74,14 @@ def setup(h, files):
 
 
 def read_memory(h):
-    if h == "hermes":
-        d = os.path.join(ROOT, "hermes/hermes-home/memories")
-        out = []
-        for f in os.listdir(d):
-            if f.endswith(".md"):
-                out.append(open(os.path.join(d, f)).read())
-        return "\n".join(out)
-    r = _cc_exec(h, "find ~/.claude -path '*/memory/*.md' -exec cat {} + 2>/dev/null; "
-                    "find ~/.claude -name MEMORY.md -exec cat {} + 2>/dev/null")
-    return r.stdout
+    # both harnesses keep memory on the host mount: hermes-home/memories (hermes)
+    # and clean-cc/workspace/memory (cc, via autoMemoryDirectory).
+    d = os.path.join(ROOT, "hermes/hermes-home/memories" if h == "hermes" else "clean-cc/workspace/memory")
+    out = []
+    for f in os.listdir(d):
+        if f.endswith(".md"):
+            out.append(open(os.path.join(d, f)).read())
+    return "\n".join(out)
 
 
 # ---- runner + checks --------------------------------------------------------
