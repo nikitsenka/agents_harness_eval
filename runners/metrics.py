@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Print answer + tool calls + token/latency metrics for one eval run.
+"""Print answer + tool calls + token/latency + context-efficiency for one eval run.
+
+The CONTEXT line reports context fill (ctx_peak, ctx/turn), cache-write ratio,
+and compaction count. Per-turn context needs per-message usage: Claude Code's
+stream-json has it; Hermes exports currently leave message token_count empty, so
+its ctx_peak/ctx/turn read n/a (cacheW_ratio still applies).
 
 Auto-detects the input format:
   - Claude Code  : stream-json (JSONL; final line type=="result")
@@ -25,25 +30,49 @@ def is_cc(lines):
     return False
 
 
+def ctx_stats(series, compactions):
+    """Context-efficiency stats from a per-turn context-size series.
+    peak = largest context reached; slope = tokens added per turn (fill rate)."""
+    turns = len(series)
+    peak = max(series) if series else 0
+    if turns > 1:
+        slope = round((series[-1] - series[0]) / (turns - 1))
+    else:
+        slope = series[0] if series else 0
+    return {"peak": peak, "turns": turns, "slope": slope, "compactions": compactions}
+
+
 def cc(lines):
     tools, result, usage, dur = [], None, {}, None
+    ctx_series, compactions = [], 0
     for l in lines:
         try:
             o = json.loads(l)
         except Exception:
             continue
-        if o.get("type") == "assistant":
-            for b in o.get("message", {}).get("content", []):
+        t = o.get("type")
+        if t == "assistant":
+            msg = o.get("message", {})
+            for b in msg.get("content", []):
                 if b.get("type") == "tool_use":
                     tools.append(b.get("name"))
-        elif o.get("type") == "result":
+            u = msg.get("usage", {})
+            # actual input context fed to the model on this turn
+            turn_ctx = (u.get("input_tokens", 0) + u.get("cache_read_input_tokens", 0)
+                        + u.get("cache_creation_input_tokens", 0))
+            if turn_ctx:
+                ctx_series.append(turn_ctx)
+        elif t == "system":
+            if "compact" in str(o.get("subtype", "")).lower():
+                compactions += 1
+        elif t == "result":
             result, usage, dur = o.get("result"), o.get("usage", {}), o.get("duration_ms")
     inp = usage.get("input_tokens", 0)
     out = usage.get("output_tokens", 0)
     cr = usage.get("cache_read_input_tokens", 0)
     cw = usage.get("cache_creation_input_tokens", 0)
     lat = f"{round(dur/1000,1)}s" if dur else "?"
-    return result, tools, inp, out, cr, cw, lat
+    return result, tools, inp, out, cr, cw, lat, ctx_stats(ctx_series, compactions)
 
 
 def hermes(raw):
@@ -55,11 +84,20 @@ def hermes(raw):
     uts = [m["timestamp"] for m in msgs if m.get("role") == "user" and m.get("timestamp")]
     ats = [m["timestamp"] for m in msgs if m.get("role") == "assistant" and m.get("timestamp")]
     lat = f"{round(max(ats)-min(uts),1)}s" if uts and ats else "?"
+    # no per-turn input usage in the export; reconstruct the curve from cumulative
+    # message sizes (token_count) — approximate, compare trends not absolutes.
+    cum, ctx_series = 0, []
+    for m in msgs:
+        cum += m.get("token_count", 0) or 0
+        ctx_series.append(cum)
     return (result, tools, o.get("input_tokens", 0), o.get("output_tokens", 0),
-            o.get("cache_read_tokens", 0), o.get("cache_write_tokens", 0), lat)
+            o.get("cache_read_tokens", 0), o.get("cache_write_tokens", 0), lat,
+            ctx_stats(ctx_series, None))
 
 
-result, tools, inp, out, cr, cw, lat = cc(lines) if is_cc(lines) else hermes(raw)
+result, tools, inp, out, cr, cw, lat, ctx = cc(lines) if is_cc(lines) else hermes(raw)
+cw_ratio = round(cw / (cr + cw), 2) if (cr + cw) else 0
+comp = ctx["compactions"] if ctx["compactions"] is not None else "?"
 print(f"=== {label} ===")
 print("--- ANSWER ---")
 print((str(result) if result else "(no result)").strip()[:1400])
@@ -68,3 +106,11 @@ print(tools)
 print("--- METRICS ---")
 print(f"[{label}] latency={lat} tools={len(tools)} | "
       f"in={inp} out={out} cacheR={cr} cacheW={cw} total={inp+out+cr+cw}")
+print("--- CONTEXT ---")
+# peak==0 means no per-turn token data in the telemetry (e.g. Hermes exports
+# leave message token_count empty) — report n/a rather than a misleading 0.
+if ctx["peak"]:
+    head = f"ctx_peak={ctx['peak']} ctx/turn={ctx['slope']} turns={ctx['turns']}"
+else:
+    head = f"ctx_peak=n/a ctx/turn=n/a turns={ctx['turns']}"
+print(f"[{label}] {head} cacheW_ratio={cw_ratio} compactions={comp}")

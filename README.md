@@ -133,9 +133,11 @@ failures an outcome score hides.
 **Context efficiency / hygiene** — how fast the agent fills the window and
 whether it actively keeps it clean. On a fixed model this is the clearest
 harness differentiator (context management is the binding constraint). Derived
-per-turn from each harness's token telemetry — CC reports the actual input
-context per turn, Hermes the per-message `token_count` you sum into a curve — so
-compare **trends and peaks**, not byte-exact totals.
+per-turn from token telemetry: Claude Code reports the actual input context per
+turn, so the full curve is available. Hermes' session export currently leaves
+per-message `token_count` empty, so its fill-curve reads `n/a` and only the
+session-level `cacheW_ratio` hygiene proxy applies — compare **trends and
+peaks** where both sides report, not byte-exact totals.
 
 | Signal | What it measures |
 |---|---|
