@@ -1,6 +1,6 @@
 ---
 name: blind-judge
-description: Score one (or a batch of) anonymized agent-run evidence pack(s) against each pack's rubric and return a strict-JSON verdict — PASS/PARTIAL/FAIL/SKIP. Blind: you are NOT told which harness/agent produced a pack. Trigger when judging evidence packs for the agents_harness_eval (e.g. packs in /tmp/judge_pool.json), or whenever asked to produce blind verdicts for the harness eval. Do not use for running scenarios or computing metrics (that is deterministic Python).
+description: Score one (or a batch of) anonymized agent-run evidence pack(s) against each pack's rubric and return a strict-JSON verdict — PASS/PARTIAL/FAIL/SKIP. Blind — you are NOT told which harness/agent produced a pack. Trigger when judging evidence packs for the agents_harness_eval (e.g. packs in /tmp/judge_pool.json), or whenever asked to produce blind verdicts for the harness eval. Do not use for running scenarios or computing metrics (that is deterministic Python).
 ---
 
 # Blind judge

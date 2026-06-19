@@ -1,6 +1,6 @@
 ---
 name: agents-eval
-description: Run the full A/B harness evaluation for this repo — Claude Code (clean-cc) vs Hermes on the SAME model — over scenarios/scenarios.yaml: execute scenarios, apply deterministic checks, judge the evidence blind on Opus, and synthesize a results report. Trigger when asked to "run the eval", "run the harness evaluation", "re-run the scenarios", "compare the harnesses", or produce a new results report. Not for editing scenarios or one-off single-scenario runs.
+description: Run the full A/B harness evaluation for this repo — Claude Code (clean-cc) vs Hermes on the SAME model — over scenarios/scenarios.yaml; executes scenarios, applies deterministic checks, judges the evidence blind on Opus, and synthesizes a results report. Trigger when asked to "run the eval", "run the harness evaluation", "re-run the scenarios", "compare the harnesses", or produce a new results report. Not for editing scenarios or one-off single-scenario runs.
 ---
 
 # Run the agents harness evaluation
