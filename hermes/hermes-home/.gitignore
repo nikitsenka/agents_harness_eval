@@ -81,3 +81,4 @@ cron/.tick.lock
 
 .cache
 .clean_shutdown
+.gateway_pid
