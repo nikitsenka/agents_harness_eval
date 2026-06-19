@@ -1,7 +1,7 @@
 model:
   default: us.anthropic.claude-sonnet-4-6
   provider: bedrock
-  base_url: https://bedrock-runtime.us-east-2.amazonaws.com
+  base_url: https://bedrock-runtime.us-east-1.amazonaws.com
 providers: {}
 fallback_providers: []
 credential_pool_strategies: {}

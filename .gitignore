@@ -10,3 +10,4 @@ clean-cc/workspace/*
 !clean-cc/workspace/.gitkeep
 hermes/workspace/*
 !hermes/workspace/.gitkeep
+.idea/

@@ -80,3 +80,4 @@ cron/.jobs.lock
 cron/.tick.lock
 
 .cache
+.clean_shutdown
