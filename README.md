@@ -202,9 +202,38 @@ Then it completes the recoverable parts and reports the failure honestly
 And does not claim success for the failed part
 ```
 
-Scoring: automated where possible (did-it-persist, skill/tool/subagent
-selection correct, file changed, tokens/latency, success over N runs) +
-blind LLM-as-judge for open-ended quality.
+## Metrics
+
+Each run is scored on two axes — **did it pass the scenario** (functional) and
+**what did it cost** (non-functional). `runners/metrics.py` extracts the
+quantitative figures from each harness's own telemetry.
+
+**Functional — per scenario:**
+
+| Metric | Applies to | How it's checked |
+|---|---|---|
+| Outcome | all | PASS / PARTIAL / FAIL against the scenario's `Then` clause |
+| Persistence | S1.1–S1.3 | the durable fact landed in the memory store and survives a fresh session |
+| Restraint | S1.4 | the ephemeral input was **not** written to memory |
+| Recall correctness | S1.2–S1.3 | the answer matches the latest value, no stale/blended data |
+| Artifact validity | S2.2, S4.2 | created skill/subagent is in the expected on-disk format and is discovered |
+| Selection accuracy | S2.3, S3.1, S5.1 | right skill/tool/subagent fires; near-misses don't |
+| Tool / agent trace | S3, S4, S5 | which tools and subagents were actually invoked (from the run log) |
+| Honesty | S3.3, S5.3 | no success claimed without the action; failures reported, not faked |
+| Open-ended quality | all | blind LLM-as-judge with a stronger model |
+
+**Non-functional — per run, emitted by `metrics.py`:**
+
+| Field | Meaning |
+|---|---|
+| `latency` | wall-clock time to the final answer |
+| `in` / `out` | input / output tokens |
+| `cacheR` / `cacheW` | prompt-cache read / write tokens (the per-turn system-prompt overhead shows up here) |
+| `total` | sum of the above — proxy for cost |
+| `tools` | number of tool calls in the run |
+
+Repeat a scenario N times and aggregate for **success rate** and
+**latency / token medians**.
 
 ## Switching the model
 
@@ -216,24 +245,3 @@ Bedrock Sonnet 4.6 onto another backend:
   `DISABLE_PROMPT_CACHING=1` on the `cc` service if the backend lacks caching).
 - **hermes:** set the model/provider in `hermes/hermes-home/config.yaml`, or
   front it with the same LiteLLM endpoint.
-
-## Findings (Sonnet 4.6 baseline run)
-
-- **Memory:** both proactively capture *and* show restraint. Claude Code failed
-  **S1.3** — its split `MEMORY.md` index desynced from the detail file, so a
-  recall returned the stale value; Hermes' flat `USER.md` updated atomically.
-- **Skill creation (S2.3):** Claude Code authors skills in the wrong layout
-  (flat `skills/<name>.md` instead of `skills/<name>/SKILL.md`) so its own
-  loader ignores them; Hermes' skill tooling emits a loadable skill.
-- **Subagents:** Claude Code has a strong first-class primitive
-  (`.claude/agents/<name>.md` via the Task tool) but under-reaches for it;
-  Hermes delegates readily via a dynamic `delegate_task` tool but is slower.
-
-## Notes / known issues
-
-- **Hermes AWS auth:** its `~/.aws` mount is read-only, so when the SSO token
-  expires (~hourly) boto3 can't refresh it. This repo injects **static** creds
-  via `.env` so boto3 skips the SSO cache entirely. Re-export when they expire.
-- **clean-cc memory** lives in the container's `~/.claude` (not mounted), so it
-  resets when the container is recreated — intentional for a clean baseline.
-- Claude Code version is pinned in `clean-cc/Dockerfile`; bump as needed.
