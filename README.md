@@ -95,11 +95,15 @@ it without being told where to look.
 
 ## Metrics
 
-Each run is scored on two axes — **did it pass the scenario** (functional) and
-**what did it cost** (non-functional). `runners/metrics.py` extracts the
-quantitative figures from each harness's own telemetry.
+Measured in four tiers, following the **outcome → process → cost → reliability**
+layering that agent-eval practice (τ-bench, DeepEval, and the like) converges on.
+The headline rule from that work: **outcome-only scoring misses 20–40% of
+failures** — a run can reach the right answer the wrong way — so process and
+reliability are graded *alongside* the result, never folded into it.
+`runners/metrics.py` emits the quantitative figures from each harness's own
+telemetry; the rest is judged per the scenario's `Then` clause.
 
-**Functional — per scenario:**
+### 1. Outcome & behaviour — per scenario
 
 | Metric | Applies to | How it's checked |
 |---|---|---|
@@ -110,22 +114,62 @@ quantitative figures from each harness's own telemetry.
 | Freshness | S1.5 | volatile facts are re-checked against the live source; durable facts are not needlessly re-fetched |
 | Artifact validity | S2.2, S4.2 | created skill/subagent is in the expected on-disk format and is discovered |
 | Selection accuracy | S2.3, S3.1, S5.1 | right skill/tool/subagent fires; near-misses don't |
-| Tool / agent trace | S3, S4, S5 | which tools and subagents were actually invoked (from the run log) |
-| Honesty | S3.3, S5.3 | no success claimed without the action; failures reported, not faked |
-| Open-ended quality | all | blind LLM-as-judge with a stronger model |
+| Faithfulness | all (esp. S1.2, S3, S6) | every claim/value in the answer traces to a real tool output or file — no invented data (no hallucination) |
+| Honesty & calibration | S3.3, S5.3, S6.3 | no success claimed without the action; a blocker is reported as blocked, not faked; abstains/asks when under-specified rather than guessing |
+| Open-ended quality | all | rubric-scored by a **blind LLM judge on a different (stronger) model than the agent**, version-pinned, spot-checked against human labels before trusted |
 
-**Non-functional — per run, emitted by `metrics.py`:**
+### 2. Process / trajectory — per run
+
+The path, not just the endpoint — this is the tier that catches the 20–40% of
+failures an outcome score hides.
+
+| Signal | What it catches |
+|---|---|
+| Tool & subagent trace | which tools/subagents actually fired (from the run log) — the basis for selection-accuracy and faithfulness |
+| Tool-call efficiency | calls-per-task and redundant/repeated calls; a spike with a flat outcome = "agent looping", a regression invisible from the final answer |
+| Recovery | on a forced tool error, did it adapt vs loop or give up (S3.3, S5.3) |
+| Path adherence | multi-step/multi-agent runs keep the right order with no silently dropped step (S4, S5, S6) |
+
+**Context efficiency / hygiene** — how fast the agent fills the window and
+whether it actively keeps it clean. On a fixed model this is the clearest
+harness differentiator (context management is the binding constraint). Derived
+per-turn from each harness's token telemetry — CC reports the actual input
+context per turn, Hermes the per-message `token_count` you sum into a curve — so
+compare **trends and peaks**, not byte-exact totals.
+
+| Signal | What it measures |
+|---|---|
+| Context growth / turn | input-context tokens added per turn (the fill slope) |
+| Peak context & headroom | max context reached, as % of the model window — how close to saturation |
+| Tokens per progress | context tokens ÷ tool calls (or completed steps) — useful work per token |
+| Compaction events | did the harness summarize/prune (CC auto-compact / Hermes compressor), and how much it reclaimed |
+| Cache-write ratio | `cacheW / (cacheR + cacheW)` from the cost telemetry — high = churny, unstable context |
+| Redundancy | repeated identical reads / tool outputs left in context (the context-rot signature) |
+
+### 3. Cost — per run, emitted by `metrics.py`
 
 | Field | Meaning |
 |---|---|
 | `latency` | wall-clock time to the final answer |
 | `in` / `out` | input / output tokens |
 | `cacheR` / `cacheW` | prompt-cache read / write tokens (the per-turn system-prompt overhead shows up here) |
-| `total` | sum of the above — proxy for cost |
+| `total` | sum of the above — raw cost proxy |
 | `tools` | number of tool calls in the run |
+| **cost / success** | `total` ÷ passed runs — the efficiency number that matters. Cheap-but-wrong is not cheaper; compare harnesses on this, **not** raw `total`. |
 
-Repeat a scenario N times and aggregate for **success rate** and
-**latency / token medians**.
+### 4. Reliability — over N runs
+
+A single green run is not a pass — agent runs are nondeterministic. Repeat each
+scenario **N times** and report:
+
+- **success rate** — pass@1 fraction over N (the average).
+- **pass^k** — fraction where **all k** runs pass; the reliability number. A harness at 0.9 success but 0.5 pass³ is flaky.
+- **variance** — stddev across runs. On a small set the noise floor is ~3–5pp, so a smaller delta is drift, not signal.
+- **crash rate vs fail rate** — separate harness errors (no final response, tool timeout, malformed output) from wrong answers. Different fixes — and an A/B between harnesses lives or dies here.
+
+**How to read them**
+- **Slice, never average across groups.** Report S1…S6 separately; one blended number hides a category that's catastrophically broken.
+- **Compare against a baseline.** A harness/model/config change is "better" only if quality metrics improve with **no** regression in crash rate or cost/success. Cost is a guardrail, not a tiebreaker.
 
 ## Switching the model
 
