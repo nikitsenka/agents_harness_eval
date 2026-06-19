@@ -127,11 +127,27 @@ python3 runners/run-eval.py --harness cc --only s32,s71 --no-judge   # subset, s
 
 The driver ([`runners/run-eval.py`](runners/run-eval.py)) reads the YAML spec and,
 per scenario: applies `reset`/`setup`, runs the prompt(s) via the harness runner,
-evaluates **deterministic `checks`** (file/answer/memory assertions), then asks a
-**blind judge** ([`runners/judge.py`](runners/judge.py) — a separate model call
-that sees the evidence but *not* which harness produced it) for the open-ended
-verdict. It writes `results.json` + `metrics.csv` (incl. price-weighted
-`cost_usd`) under `results/`. Both harnesses must be up first.
+evaluates **deterministic `checks`** (file/answer/memory assertions), and records
+the open-ended verdict. It writes `results.json` + `metrics.csv` (incl.
+price-weighted `cost_usd`) under `results/`. Both harnesses must be up first.
+
+**The judge should be a *different, stronger* model than the agents.** The agents
+run Sonnet, so `judge.py`'s HTTP path (also Sonnet) is only an automated
+*fallback* — a same-model judge catches only errors the model already
+understands. The canonical judge is **Opus, run blind** by the Claude Code (Opus)
+session over an anonymized pool:
+
+```bash
+python3 runners/run-eval.py --harness cc     --no-judge   # phase 1: execute + checks
+python3 runners/run-eval.py --harness hermes --no-judge
+python3 runners/judge_pool.py build results/cc-run results/hermes-run   # phase 2: anonymize
+#   -> Opus session judges /tmp/judge_pool.json BLIND -> /tmp/opus_verdicts.json
+python3 runners/judge_pool.py merge /tmp/opus_verdicts.json results/judge.json  # phase 3: agreement
+```
+
+In the 2026-06-19 run, the Opus judge agreed with the Sonnet judge on **39/42
+(93%)** — and **all 3 disagreements fell on subjective scenarios**, none on
+deterministic ones (see `results/judge-opus-vs-sonnet.json`).
 
 ## Metrics
 

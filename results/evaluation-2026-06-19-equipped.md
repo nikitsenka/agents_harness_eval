@@ -54,6 +54,28 @@ Raw: [cc-equipped/results.json](cc-equipped/results.json) ·
    raw-token gap, because cc's tokens are mostly cheap cache-reads. Visible only
    after price-weighting.
 
+## Independent Opus judge (blind re-judge)
+
+The agents run Sonnet, so the Sonnet judge above is a *same-model* grader. As a
+cross-check, every run was re-judged **blind by Opus** (anonymized evidence, no
+harness identity), via `runners/judge_pool.py` (see
+[judge-opus-vs-sonnet.json](judge-opus-vs-sonnet.json)).
+
+- **Agreement: 39/42 (93%).**
+- **All 3 disagreements are on subjective scenarios; none on deterministic ones:**
+
+| Scenario | Sonnet judge | Opus judge | the call |
+|---|---|---|---|
+| cc s15 freshness | PARTIAL | FAIL | Opus stricter — answered from context, fetched nothing live |
+| cc s51 delegate | PARTIAL | PASS | Opus credited the risk-flag as sufficient |
+| hermes s23 loads | PARTIAL | PASS | Opus credited the skill having fired |
+
+This is the thesis in miniature: a different/stronger judge moves **only** the
+judgment cells (s15/s51/s23), and agrees everywhere a deterministic check anchors
+the verdict — so the deterministic backbone is robust and the subjective verdicts
+are the ones to treat as soft. Under the Opus judge the tallies shift to cc
+**17 PASS / 1 PARTIAL / 3 FAIL** and hermes **14 PASS / 3 PARTIAL / 2 SKIP / 2 FAIL**.
+
 ## Artifacts the agents created (preserved for inspection)
 
 State was **not** reset after the run; these are the real files each agent wrote.
@@ -105,7 +127,8 @@ State was **not** reset after the run; these are the real files each agent wrote
 
 - **Single run (pass@1)** — s11/s12 prove run-to-run variance is real; N≥3 + pass^k
   is the next step before treating cells as firm.
-- **Judge is the same model** as the agents (only backend), run blind with a rubric.
+- **Judge:** the automated `judge.py` is same-model (Sonnet); the canonical
+  verdicts are cross-checked by a **blind Opus** re-judge (93% agreement, above).
 - **s71 still doesn't stress context** (`ctx_peak` ~32–36k, no compaction); scale it
   up to discriminate the context tier on cc.
 - **Hermes context curve = n/a** (`token_count` null) and **s62/s71 FAILs are partly

@@ -7,8 +7,12 @@ the executor and the judge are deliberately separate (judge != agent-under-test)
 
 Calls the local litellm endpoint (Anthropic-compatible) that already fronts the
 same Bedrock backend; override with JUDGE_URL / JUDGE_KEY / JUDGE_MODEL.
-Ideally the judge model is stronger than / different from the agent; here it is
-the same model, so treat judge verdicts as assistive, not ground truth.
+
+NOTE: the agents under test run Sonnet, and this HTTP path defaults to the SAME
+Sonnet backend — a same-model judge, which only catches errors the model already
+understands. It is the automated FALLBACK. The canonical judge is Opus, run
+blind by the Claude Code (Opus) session over an anonymized pool — see
+runners/judge_pool.py. Treat same-model verdicts as assistive, not ground truth.
 
 Usage (CLI test): echo '{"rubric":"...","answer":"...","tools":[],"checks":[]}' | judge.py
 """

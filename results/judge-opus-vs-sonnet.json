@@ -1,0 +1,170 @@
+{
+ "cc_s11": {
+  "opus": "FAIL",
+  "recorded": "FAIL"
+ },
+ "cc_s12": {
+  "opus": "FAIL",
+  "recorded": "FAIL"
+ },
+ "cc_s13": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s14": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s15": {
+  "opus": "FAIL",
+  "recorded": "PARTIAL"
+ },
+ "cc_s21": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s22": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s23": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s31": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s32": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s33": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s41": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s42": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s43": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s51": {
+  "opus": "PASS",
+  "recorded": "PARTIAL"
+ },
+ "cc_s52": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s53": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s61": {
+  "opus": "PARTIAL",
+  "recorded": "PARTIAL"
+ },
+ "cc_s62": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s63": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "cc_s71": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s11": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s12": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s13": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s14": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s15": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s21": {
+  "opus": "PARTIAL",
+  "recorded": "PARTIAL"
+ },
+ "hermes_s22": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s23": {
+  "opus": "PASS",
+  "recorded": "PARTIAL"
+ },
+ "hermes_s31": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s32": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s33": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s41": {
+  "opus": "PARTIAL",
+  "recorded": "PARTIAL"
+ },
+ "hermes_s42": {
+  "opus": "SKIP",
+  "recorded": "SKIP"
+ },
+ "hermes_s43": {
+  "opus": "SKIP",
+  "recorded": "SKIP"
+ },
+ "hermes_s51": {
+  "opus": "PARTIAL",
+  "recorded": "PARTIAL"
+ },
+ "hermes_s52": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s53": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s61": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s62": {
+  "opus": "FAIL",
+  "recorded": "FAIL"
+ },
+ "hermes_s63": {
+  "opus": "PASS",
+  "recorded": "PASS"
+ },
+ "hermes_s71": {
+  "opus": "FAIL",
+  "recorded": "FAIL"
+ }
+}
