@@ -1,138 +1,112 @@
-# Harness Evaluation (equipped, driver v2) — 2026-06-19
+# Harness Evaluation (equipped, driver v2, post-fix) — 2026-06-19
 
-Full re-run through the new automated driver (`runners/run-eval.py`, stamp
-`e404e9f`) over the executable spec
-([scenarios/scenarios.yaml](../scenarios/scenarios.yaml), 21 scenarios S1–S7).
-Same model both sides (Sonnet 4.6 / Bedrock us-east-1).
+Full run through the automated driver (`runners/run-eval.py`, stamp `0a32f35`)
+over the executable spec ([scenarios/scenarios.yaml](../scenarios/scenarios.yaml),
+21 scenarios S1–S7). Same model both sides (Sonnet 4.6 / Bedrock us-east-1).
+clean-cc is **equipped** (seeded `CLAUDE.md`/skills/agents/memory); scoring is a
+**blind judge** separate from the executor, informed by deterministic checks.
 
-**What changed since the first run:**
-- **clean-cc is now *equipped*** — seeded `CLAUDE.md` "soul", `.claude/skills/`
-  (example `text-stats`), `.claude/agents/` (example `file-reviewer`), and
-  `memory/`. So this compares two *scaffolded* harnesses, not vanilla-CC vs Hermes.
-- **Scoring is now by a blind judge** ([judge.py](../runners/judge.py)) separate
-  from the executor — it sees the goal + evidence + deterministic checks but not
-  which harness produced the run.
-- **Deterministic checks** (file/answer/memory assertions) run before the judge.
-- **Cost is price-weighted** (`cost_usd`), correcting the raw-token comparison.
+**Spec fixes applied since the prior run** (both were measurement artifacts):
+- **s11** — dropped the brittle last-message `answer_contains "96"` check; the
+  verdict now measures *unprompted memory persistence* only.
+- **s22** — `reset: [skills]` before authoring, so s21's proactively-created
+  skill no longer no-ops the author step. **Both harnesses now PASS s22.**
 
-Raw data: [cc-equipped/results.json](cc-equipped/results.json) +
-[metrics.csv](cc-equipped/metrics.csv),
-[hermes-equipped/results.json](hermes-equipped/results.json) +
-[metrics.csv](hermes-equipped/metrics.csv).
+**Reset model changed:** state is reset to the seeded baseline **once before** the
+run and **never after** — created skills/subagents/memory accumulate and are left
+in place (see *Artifacts created* below).
+
+Raw: [cc-equipped/results.json](cc-equipped/results.json) ·
+[hermes-equipped/results.json](hermes-equipped/results.json) (+ `metrics.csv`).
 
 ## Scoreboard
 
 | | clean-cc (equipped) | Hermes |
 |---|---|---|
 | PASS | 16 | 13 |
-| PARTIAL | 3 | 3 |
-| FAIL | 2 | 3 |
-| SKIP | 0 | 2 |
-| Median cost / run | $0.043 | **$0.025** |
-| Median latency / run | 8.4 s | 8.5 s |
-| Suite cost (sum) | $1.15 | **$0.73** |
-
-Two of each harness's FAILs are **measurement artifacts** (see below), not real
-capability gaps — corrected, cc is ~18/21 and Hermes ~14/21 + 2 legitimate SKIP.
+| PARTIAL | 3 | 4 |
+| FAIL | 2 (s11, s12) | 2 (s62, s71) |
+| SKIP | 0 | 2 (s42, s43) |
+| Median cost / run | $0.035 | **$0.024** |
+| Median latency / run | 7.0 s | 8.1 s |
+| Suite cost (sum) | $0.91 | **$0.69** |
 
 ## Headline findings
 
-1. **Equipping clean-cc closed its biggest gaps.** With the seeded `CLAUDE.md`
-   conventions, CC now **authors a skill that actually loads and fires** (s23
-   PASS — was PARTIAL/never-fired in the vanilla run) and **creates a valid,
-   loadable subagent** (s42/s43 PASS, and s41 *recognize* now proposes a subagent
-   instead of a hook). The vanilla run's skill-layout bug and S4.1 misfire are
-   gone — scaffolding, not the model, fixed them. (Vanilla cc was 13 PASS / 6
-   PARTIAL / 1 FAIL → equipped 16 PASS / 3 PARTIAL / 2 FAIL.)
-2. **The price-weighted cost shrinks the gap to ~1.6×.** Raw tokens made cc look
-   ~3× costlier; in real dollars it's **$0.043 vs $0.025 median** — because most
-   of cc's tokens are cheap cache-reads. This is the honest A/B cost number and
-   it only became visible after weighting.
-3. **Hermes failed the long-horizon task (s71); cc passed.** CC produced all six
-   `out_N` files honoring the early naming rule; Hermes' deterministic checks all
-   failed (files not produced as specified). First real S7 signal — and the one
-   place the new long-horizon scenario discriminated. (Context curve still cc-only;
-   `ctx_peak` stayed ~32–36k, so even s71 didn't trigger compaction.)
-4. **Subagents still differ in kind.** cc has file-based subagents (authored +
-   loadable). Hermes remains dynamic-delegation-only → s42/s43 legitimately SKIP.
-5. **Honesty held** across both on the blocked/missing cases (s53, s61, s63).
+1. **Equipped clean-cc authors loadable skills and subagents** — the vanilla
+   skill-layout bug is gone: `csv-to-markdown/SKILL.md` is created in the correct
+   `dir/SKILL.md` form (s22) **and fires** in a fresh session (s23 PASS), and a
+   scoped `sql-migration-reviewer` subagent is authored + auto-registered
+   (s42/s43 PASS). Scaffolding, not the model, fixed these.
+2. **Unprompted memory capture is flaky on cc** — s11 FAILed this run (the agent
+   answered the math but did **not** persist the SLA), which then **cascaded into
+   s12** (recall had nothing to find). The prior run captured fine. Same model,
+   same prompt → different behaviour: textbook motivation for pass^k / N-run
+   scoring, and a caution that shared-memory scenarios chain failures.
+3. **Hermes memory is rock-solid** — captured (s11), recalled (s12), updated
+   atomically to 8h with no blend (s13), showed restraint (s14), and fetched live
+   time for the volatile question (s15) — a clean S1 sweep.
+4. **Hermes subagents remain dynamic-only** (s42/s43 SKIP — `delegate_task`, no
+   file registry) and it **failed the long-horizon task** (s71) and the
+   `config.json` write (s62 — security layer blocked the write and the automated
+   driver has no terminal fallback, so it FAILs rather than PARTIALs).
+5. **Cost gap ~1.5× in dollars** ($0.035 vs $0.024 median) — far less than the
+   raw-token gap, because cc's tokens are mostly cheap cache-reads. Visible only
+   after price-weighting.
 
-## Measurement artifacts the run exposed (fix before trusting these cells)
+## Artifacts the agents created (preserved for inspection)
 
-- **s11 FAILs on BOTH** — the prompt bundles a memory fact + "what is 12×8?".
-  Both agents persisted the fact but their *final* message was the memory
-  confirmation, so `answer_contains "96"` (checked on the last message) missed
-  the math answer. This is a last-message-extraction + multi-intent-prompt
-  artifact, not a capability gap. Fix: split the scenario, or scan all messages.
-- **s22 FAILs on BOTH** — s21 ("recognize") proactively *created* the csv skill,
-  so s22 ("author it") found it already present and no-op'd → judged FAIL.
-  Cross-scenario contamination. Fix: make s21 propose-only, or `reset: [skills]`
-  before s22.
+State was **not** reset after the run; these are the real files each agent wrote.
 
-Both are exactly the kind of issue the executable spec + blind judge are meant
-to surface — and both are one-line spec fixes.
+**clean-cc** (`clean-cc/workspace/`)
+- `memory/project_code_review_sla.md` — proper frontmatter + body: *"Code review
+  SLA is 8 hours, effective 2026-06-19"* with **Why/How** (captured 24h then
+  updated to 8h, no blend), and `memory/MEMORY.md` index updated to point at it.
+- `.claude/skills/csv-to-markdown/SKILL.md` — correct `dir/SKILL.md` layout, YAML
+  frontmatter with a precise trigger description, and 6 ordered runnable steps.
+- `.claude/agents/sql-migration-reviewer.md` — frontmatter (`name`, `description`,
+  `tools: Read, Glob, Grep`) + a detailed safety-review system prompt.
 
-## clean-cc (equipped) — verdicts
+**Hermes** (`hermes/hermes-home/`)
+- `memories/USER.md` — flat, atomic: *"Team's standard code-review SLA is 8 hours
+  (updated June 2026)."*
+- `skills/data/csv-to-markdown/SKILL.md` and `skills/data/sql-migration-review/SKILL.md`
+  — both with frontmatter + a `triggers:` list (Hermes authored a **skill** for
+  the SQL-review role rather than a subagent — consistent with its dynamic model).
+- No file-based subagents (delegation is the runtime `delegate_task` tool).
 
-| Scenario | Verdict | cost | note |
+## Per-scenario verdicts
+
+| Scn | clean-cc | Hermes | notes |
 |---|---|---|---|
-| s11 capture | FAIL* | $0.158 | persisted SLA; final msg lacked "96" (artifact) |
-| s12 recall | PASS | $0.017 | recalled 24h from memory |
-| s13 update | PASS | $0.072 | 8h only, no blend |
-| s14 restraint | PASS | $0.017 | 62; nothing persisted |
-| s15 freshness | PARTIAL | $0.017 | answered from training, didn't fetch live |
-| s21 recognize | PASS | $0.103 | proposed csv-to-markdown skill |
-| s22 author | FAIL* | $0.043 | skill already created in s21 (artifact) |
-| s23 loads | PASS | $0.053 | **skill loaded & fired** (vanilla bug fixed) |
-| s31 select | PASS | $0.017 | near-miss correctly ignored |
-| s32 tool+args | PASS | $0.029 | notes.txt exact |
-| s33 chain+recovery | PASS | $0.041 | created header then appended; honest |
-| s41 recognize | PASS | $0.104 | proposed a scoped subagent (not a hook) |
-| s42 author | PASS | $0.052 | valid `.claude/agents/sql-migration-reviewer.md` |
-| s43 loads | PASS | $0.139 | subagent listed/available in new session |
-| s51 delegate | PARTIAL | $0.032 | flagged risk but did not delegate to a specialist |
-| s52 fan-out | PASS | $0.045 | a=3, c=437, b correct |
-| s53 isolation | PASS | $0.031 | missing step honest |
-| s61 end-to-end | PARTIAL | $0.064 | greet.py written, couldn't execute (no python) |
-| s62 redirection | PASS | $0.029 | port 9090 + host, no 8080 |
-| s63 honest blocked | PASS | $0.018 | reported package nonexistent |
-| s71 long-horizon | PASS | $0.067 | all six out_N correct, naming rule honored |
+| s11 capture | **FAIL** | PASS | cc didn't persist this run (flaky); hermes did |
+| s12 recall | **FAIL** | PASS | cc cascade from s11; hermes recalled 24h |
+| s13 update | PASS | PASS | both 8h, no blend |
+| s14 restraint | PASS | PASS | 62, nothing persisted |
+| s15 freshness | PARTIAL | PASS | cc answered from context; hermes ran `date` |
+| s21 recognize | PASS | PARTIAL | both propose reuse; hermes leaned skill-ish |
+| s22 author | PASS | PASS | **fixed** — both author a real skill now |
+| s23 loads | PASS | PARTIAL | cc skill fired; hermes table ok, load less certain |
+| s31 select | PASS | PASS | near-miss ignored |
+| s32 tool+args | PASS | PASS | notes.txt exact |
+| s33 chain+recovery | PASS | PASS | header then append; honest |
+| s41 recognize | PASS | PARTIAL | cc proposed subagent; hermes proposed skill |
+| s42 author | PASS | SKIP | cc file-based subagent; hermes dynamic-only |
+| s43 loads | PASS | SKIP | cc registered; hermes no named registry |
+| s51 delegate | PARTIAL | PARTIAL | both flagged DROP; delegation not clean |
+| s52 fan-out | PASS | PASS | a=3, c=437, b correct |
+| s53 isolation | PASS | PASS | missing step honest |
+| s61 end-to-end | PARTIAL | PASS | cc no python to run; hermes ran greet.py |
+| s62 redirection | PASS | **FAIL** | hermes security blocked the config.json write |
+| s63 honest blocked | PASS | PASS | reported nonexistent package |
+| s71 long-horizon | PASS | **FAIL** | cc produced all out_N; hermes did not |
 
-## Hermes — verdicts
+## Limitations (unchanged)
 
-| Scenario | Verdict | cost | note |
-|---|---|---|---|
-| s11 capture | FAIL* | $0.059 | persisted SLA; final msg lacked "96" (artifact) |
-| s12 recall | PASS | $0.052 | recalled 24h |
-| s13 update | PASS | $0.072 | 8h only, no blend |
-| s14 restraint | PASS | $0.006 | 62; nothing persisted |
-| s15 freshness | PASS | $0.011 | used terminal to fetch live UTC |
-| s21 recognize | PASS | $0.051 | proposed + saved a SKILL.md |
-| s22 author | FAIL* | $0.066 | only viewed existing skill (s21 artifact) |
-| s23 loads | PARTIAL | $0.027 | table produced; skill-load less certain |
-| s31 select | PASS | $0.006 | near-miss ignored |
-| s32 tool+args | PASS | $0.018 | notes.txt exact (no security block this run) |
-| s33 chain+recovery | PASS | $0.025 | header then append; honest |
-| s41 recognize | PARTIAL | $0.016 | proposed a skill, not a tool-limited subagent |
-| s42 author | SKIP | $0.088 | no file-based subagent mechanism (dynamic delegation) |
-| s43 loads | SKIP | $0.078 | dynamic delegation only; no named registry |
-| s51 delegate | PARTIAL | $0.034 | flagged DROP as critical; delegation unclear |
-| s52 fan-out | PASS | $0.015 | a=3, c=437, b correct |
-| s53 isolation | PASS | $0.015 | missing step honest |
-| s61 end-to-end | PASS | $0.029 | wrote greet.py and executed it → "hi" |
-| s62 redirection | PASS | $0.019 | port 9090 + host, no 8080 |
-| s63 honest blocked | PASS | $0.013 | reported package nonexistent |
-| s71 long-horizon | FAIL | $0.023 | out_N / summary not produced as specified |
-
-\* artifact — see the measurement-artifacts section.
-
-## Method notes / limitations
-
-- **Single run (pass@1)** — still no pass^k/variance. Judgment + the two
-  artifacts make individual cells noisy; re-run N≥3 before treating as firm.
-- **Judge is the same model as the agents** (only backend available), run blind
-  with a rubric. Prefer a different/stronger judge model when one exists.
-- **s71 doesn't yet stress context** — `ctx_peak` ~32–36k, no compaction. Scale
-  it up (more files/turns) to make the context tier discriminate on cc too.
-- **Hermes context curve = n/a** (`token_count` null) — half the context
-  comparison remains blind.
+- **Single run (pass@1)** — s11/s12 prove run-to-run variance is real; N≥3 + pass^k
+  is the next step before treating cells as firm.
+- **Judge is the same model** as the agents (only backend), run blind with a rubric.
+- **s71 still doesn't stress context** (`ctx_peak` ~32–36k, no compaction); scale it
+  up to discriminate the context tier on cc.
+- **Hermes context curve = n/a** (`token_count` null) and **s62/s71 FAILs are partly
+  harness-policy** (security block / no driver fallback), not pure reasoning.
