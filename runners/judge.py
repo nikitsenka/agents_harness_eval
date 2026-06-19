@@ -22,16 +22,24 @@ JUDGE_URL = os.environ.get("JUDGE_URL", "http://localhost:4001/v1/messages")
 JUDGE_KEY = os.environ.get("JUDGE_KEY", "sk-eval-local")
 JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "claude-judge")
 
-SYSTEM = (
-    "You are a strict, impartial evaluator of an AI agent's run. You are given a "
-    "task GOAL/rubric and EVIDENCE: the agent's final answer, the tools it used, "
-    "and results of deterministic checks already run against its output. You do "
-    "NOT know which agent or framework produced this — judge only on the evidence. "
-    "Choose exactly one verdict: PASS, PARTIAL, FAIL, or SKIP (SKIP only if the "
-    "rubric says the capability does not apply to this agent). Weigh the "
-    "deterministic checks heavily. Reply with ONLY a JSON object: "
-    '{"verdict": "...", "reason": "<=200 chars"}.'
-)
+def _load_system():
+    """Single source of truth = the blind-judge skill; fall back to a terse inline
+    rubric if the skill file is unavailable."""
+    skill = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                         ".claude/skills/blind-judge/SKILL.md")
+    try:
+        txt = open(skill).read()
+        if txt.startswith("---"):           # strip YAML frontmatter
+            txt = txt.split("---", 2)[2]
+        return txt.strip()
+    except Exception:
+        return ("You are a strict, impartial blind evaluator of an AI agent's run. Judge "
+                "ONLY on the evidence; you do not know which agent produced it. Verdict in "
+                "PASS/PARTIAL/FAIL/SKIP, weighing deterministic checks heavily. Reply with "
+                'ONLY JSON: {"verdict": "...", "reason": "<=160 chars"}.')
+
+
+SYSTEM = _load_system()
 
 
 def _evidence_block(rubric, answer, tools, checks):

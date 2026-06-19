@@ -35,9 +35,12 @@ persistence.
 ```
 agents_harness_eval/
 ├── README.md
+├── .claude/skills/        # skills for the orchestrating (Opus) session — NOT the harnesses
+│   ├── agents-eval/       #   end-to-end eval playbook (conductor)
+│   └── blind-judge/       #   per-pack judging rubric (run on Opus)
 ├── docs/
-│   └── SCENARIOS.md       # full S1–S6 scenario catalogue (Gherkin)
-├── clean-cc/              # vanilla Claude Code baseline
+│   └── SCENARIOS.md       # full S1–S7 scenario catalogue (Gherkin)
+├── clean-cc/              # Claude Code baseline (equipped scaffolding)
 │   ├── Dockerfile         #   claude-code on node:20-slim, runs as non-root, idles
 │   ├── docker-compose.yml #   cc + litellm (model router)
 │   ├── litellm-config.yaml#   "*" -> Bedrock Sonnet 4.6  (repoint to swap model)
@@ -119,6 +122,13 @@ memory" trigger words; the agent decides on its own what to persist and recalls
 it without being told where to look.
 
 ### Running the eval
+
+The whole pipeline is captured as an **`agents-eval` skill** (`.claude/skills/agents-eval/`)
+— a Claude Code (Opus) session can just be asked to "run the harness evaluation"
+and it follows the playbook: execute → deterministic checks → blind Opus judging
+→ synthesize the report. The skill is the *conductor*; it calls the Python tools
+below for everything deterministic and applies the **`blind-judge`** skill for
+the verdicts. To drive it by hand:
 
 ```bash
 python3 runners/run-eval.py --harness cc      # or: --harness hermes
