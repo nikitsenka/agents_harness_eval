@@ -82,3 +82,6 @@ cron/.tick.lock
 .cache
 .clean_shutdown
 .gateway_pid
+.local/
+memories/USER.md
+memories/*.lock

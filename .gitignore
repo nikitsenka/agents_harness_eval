@@ -5,9 +5,17 @@
 # OS
 .DS_Store
 
-# Keep empty mounted workspaces tracked but ignore their runtime contents
+# clean-cc/workspace ships seeded scaffolding (CLAUDE.md, .claude, memory);
+# ignore only runtime artifacts created during eval runs.
 clean-cc/workspace/*
-!clean-cc/workspace/.gitkeep
+!clean-cc/workspace/CLAUDE.md
+!clean-cc/workspace/.claude/
+!clean-cc/workspace/memory/
+# hermes/workspace stays empty (Hermes state lives in hermes-home)
 hermes/workspace/*
 !hermes/workspace/.gitkeep
 .idea/
+
+# python
+__pycache__/
+*.pyc

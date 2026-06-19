@@ -14,10 +14,15 @@ Usage: metrics.py <file> [label]
 """
 import json, sys
 
-path = sys.argv[1]
-label = sys.argv[2] if len(sys.argv) > 2 else path
-raw = open(path).read().strip()
-lines = [l for l in raw.splitlines() if l.strip()]
+# Approx AWS Bedrock Claude Sonnet 4.x pricing, USD per 1M tokens. Cache reads are
+# ~10% of input and cache writes ~1.25x, which is why a raw token `total` overstates
+# the dollar cost of a harness that reloads a big cached prefix each turn.
+PRICE_PER_M = {"in": 3.0, "out": 15.0, "cacheR": 0.30, "cacheW": 3.75}
+
+
+def cost_usd(inp, out, cr, cw):
+    return round((inp * PRICE_PER_M["in"] + out * PRICE_PER_M["out"]
+                  + cr * PRICE_PER_M["cacheR"] + cw * PRICE_PER_M["cacheW"]) / 1_000_000, 5)
 
 
 def is_cc(lines):
@@ -95,22 +100,43 @@ def hermes(raw):
             ctx_stats(ctx_series, None))
 
 
-result, tools, inp, out, cr, cw, lat, ctx = cc(lines) if is_cc(lines) else hermes(raw)
-cw_ratio = round(cw / (cr + cw), 2) if (cr + cw) else 0
-comp = ctx["compactions"] if ctx["compactions"] is not None else "?"
-print(f"=== {label} ===")
-print("--- ANSWER ---")
-print((str(result) if result else "(no result)").strip()[:1400])
-print("--- TOOLS ---")
-print(tools)
-print("--- METRICS ---")
-print(f"[{label}] latency={lat} tools={len(tools)} | "
-      f"in={inp} out={out} cacheR={cr} cacheW={cw} total={inp+out+cr+cw}")
-print("--- CONTEXT ---")
-# peak==0 means no per-turn token data in the telemetry (e.g. Hermes exports
-# leave message token_count empty) — report n/a rather than a misleading 0.
-if ctx["peak"]:
-    head = f"ctx_peak={ctx['peak']} ctx/turn={ctx['slope']} turns={ctx['turns']}"
-else:
-    head = f"ctx_peak=n/a ctx/turn=n/a turns={ctx['turns']}"
-print(f"[{label}] {head} cacheW_ratio={cw_ratio} compactions={comp}")
+def parse_file(path):
+    """Parse one run file into a metrics dict (importable for aggregation)."""
+    raw = open(path).read().strip()
+    lines = [l for l in raw.splitlines() if l.strip()]
+    fmt_cc = is_cc(lines)
+    result, tools, inp, out, cr, cw, lat, ctx = cc(lines) if fmt_cc else hermes(raw)
+    lat_s = float(lat[:-1]) if lat.endswith("s") and lat[:-1].replace(".", "").isdigit() else None
+    return {"format": "cc" if fmt_cc else "hermes", "result": result, "tools": tools,
+            "in": inp, "out": out, "cacheR": cr, "cacheW": cw, "total": inp + out + cr + cw,
+            "cost_usd": cost_usd(inp, out, cr, cw),
+            "lat": lat, "lat_s": lat_s, "ctx": ctx,
+            "cacheW_ratio": round(cw / (cr + cw), 2) if (cr + cw) else 0}
+
+
+def main():
+    path = sys.argv[1]
+    label = sys.argv[2] if len(sys.argv) > 2 else path
+    d = parse_file(path)
+    comp = d["ctx"]["compactions"] if d["ctx"]["compactions"] is not None else "?"
+    print(f"=== {label} ===")
+    print("--- ANSWER ---")
+    print((str(d["result"]) if d["result"] else "(no result)").strip()[:1400])
+    print("--- TOOLS ---")
+    print(d["tools"])
+    print("--- METRICS ---")
+    print(f"[{label}] latency={d['lat']} tools={len(d['tools'])} | "
+          f"in={d['in']} out={d['out']} cacheR={d['cacheR']} cacheW={d['cacheW']} "
+          f"total={d['total']} cost=${d['cost_usd']}")
+    print("--- CONTEXT ---")
+    # peak==0 means no per-turn token data in the telemetry (e.g. Hermes exports
+    # leave message token_count empty) — report n/a rather than a misleading 0.
+    if d["ctx"]["peak"]:
+        head = f"ctx_peak={d['ctx']['peak']} ctx/turn={d['ctx']['slope']} turns={d['ctx']['turns']}"
+    else:
+        head = f"ctx_peak=n/a ctx/turn=n/a turns={d['ctx']['turns']}"
+    print(f"[{label}] {head} cacheW_ratio={d['cacheW_ratio']} compactions={comp}")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,239 @@
+# Executable scenario spec for the harness A/B eval.
+#
+# The driver (runners/run-eval.py) runs each scenario in order against a harness,
+# applies the deterministic `checks`, then sends the evidence to a BLIND judge
+# (runners/judge.py) with `judge`. Final verdict combines both.
+#
+# Per scenario:
+#   id, group, title
+#   reset:   optional list of [memory, skills, workspace] to clear BEFORE this run
+#            (omit to inherit prior state — this is how multi-scenario memory deps work)
+#   setup:   optional files to create in the harness workspace before the first step
+#            [{path: notes.txt, content: "..."}]
+#   steps:   ordered prompts (>1 = multi-turn; each is a separate harness run)
+#   checks:  deterministic assertions, evaluated after the LAST step. Types:
+#            file_exists{path} file_equals{path,value} file_contains{path,value}
+#            file_matches{path,regex} answer_contains{value} answer_not_contains{value}
+#            tool_used{name} tool_not_used{name} memory_contains{value}
+#            memory_not_contains{value}
+#   judge:   rubric for the blind LLM judge (sees the goal + evidence, NOT the harness)
+
+meta:
+  workspace: /workspace
+
+scenarios:
+  # ---------------- S1 Memory (implicit; no save/remember/note words) -----------
+  - id: s11
+    group: S1
+    title: Unprompted capture of a durable fact
+    reset: [memory, workspace]
+    steps:
+      - prompt: "Morning! Side note, our team's standard code-review SLA is 24 hours. Anyway, what is 12 times 8?"
+    checks:
+      - {type: answer_contains, value: "96"}
+      - {type: memory_contains, value: "24 hour"}
+    judge: "Goal: the user mentioned a durable fact (code-review SLA = 24 hours) in passing with NO instruction to remember it, and asked 12x8. PASS if the agent answered 96 AND persisted the SLA fact to long-term memory on its own. FAIL if it did not persist it."
+
+  - id: s12
+    group: S1
+    title: Oblique recall after a fresh session
+    steps:
+      - prompt: "What's our code-review SLA again?"
+    checks:
+      - {type: answer_contains, value: "24"}
+    judge: "Goal: recall a previously-stated fact (code-review SLA = 24 hours) in a new session. PASS if the agent answers 24 hours from memory without asking where to look or saying it doesn't know."
+
+  - id: s13
+    group: S1
+    title: Silent update on a casual contradiction
+    steps:
+      - prompt: "Quick heads-up, we changed the code-review SLA to 8 hours as of this week."
+      - prompt: "remind me, what's our code-review SLA?"
+    checks:
+      - {type: answer_contains, value: "8"}
+      - {type: answer_not_contains, value: "24 hours"}
+    judge: "Goal: a fact was updated (SLA 24h -> 8h) then recalled. PASS only if the final answer gives 8 hours as the current value with NO blend (mentioning 24 only as past history is OK; presenting both as current is FAIL)."
+
+  - id: s14
+    group: S1
+    title: Restraint on the ephemeral
+    reset: [memory]
+    steps:
+      - prompt: "Ugh, I'm so tired today. Quick — what's 45 plus 17?"
+    checks:
+      - {type: answer_contains, value: "62"}
+      - {type: memory_not_contains, value: "tired"}
+    judge: "Goal: transient chit-chat (being tired) plus a one-off sum. PASS if the agent answered 62 AND did NOT write the mood/number to long-term memory."
+
+  - id: s15
+    group: S1
+    title: Re-verify a volatile fact instead of trusting memory
+    steps:
+      - prompt: "What's the current date and time in UTC right now?"
+    judge: "Goal: answer the CURRENT UTC time. PASS if the agent calls a tool/shell (e.g. runs `date`) to fetch the live value. PARTIAL if it answers from training/memory without checking. FAIL if it refuses."
+
+  # ---------------- S2 Skill creation -------------------------------------------
+  - id: s21
+    group: S2
+    title: Recognize a repeated task warrants a skill
+    reset: [skills, workspace]
+    steps:
+      - prompt: "This is the third time I've asked you to convert a CSV into a markdown table and save it. Anything smarter we could do here?"
+    judge: "Goal: after a repeated procedure, propose turning it into a reusable SKILL (not merely a hook or one-off script). PASS if it proposes a skill and roughly what would trigger it."
+
+  - id: s22
+    group: S2
+    title: Author a correct, well-scoped skill
+    steps:
+      - prompt: "Please create a skill that converts a CSV file into a Markdown table and saves it as a .md file; it should trigger on requests like 'turn this csv into a markdown table'."
+    judge: "Goal: author a loadable, well-scoped skill. PASS if a skill artifact was created in the harness's expected on-disk format/location with a clear trigger description and runnable steps. PARTIAL if created but in the wrong layout (so it won't load). FAIL if nothing usable was created."
+
+  - id: s23
+    group: S2
+    title: A newly created skill actually fires
+    setup:
+      - {path: data.csv, content: "name,age\nAda,36\nLin,29\n"}
+    steps:
+      - prompt: "Turn /workspace/data.csv into a markdown table and save it as /workspace/data.md."
+    checks:
+      - {type: file_contains, path: data.md, value: "Ada"}
+      - {type: file_contains, path: data.md, value: "|"}
+    judge: "Goal: a skill just authored should be discovered and fire on a matching request in a fresh session. PASS if the new skill loaded/fired AND a valid markdown table was produced. PARTIAL if the table was produced but the skill did not actually load (done ad hoc)."
+
+  # ---------------- S3 Skills & tools -------------------------------------------
+  - id: s31
+    group: S3
+    title: Select the right skill, ignore near-misses
+    steps:
+      - prompt: "What does the abbreviation CSV stand for?"
+    checks:
+      - {type: answer_contains, value: "comma"}
+    judge: "Goal: a near-miss request (asking what CSV means) that is OUTSIDE the csv-to-markdown skill's scope. PASS if the agent answers directly and does NOT fire the skill / do a conversion."
+
+  - id: s32
+    group: S3
+    title: Correct tool with correct arguments
+    reset: [workspace]
+    steps:
+      - prompt: "Create a file at /workspace/notes.txt containing exactly this text: alpha-bravo-charlie. Confirm when done."
+    checks:
+      - {type: file_equals, path: notes.txt, value: "alpha-bravo-charlie"}
+    judge: "Goal: create notes.txt containing exactly 'alpha-bravo-charlie' and confirm. PASS if done with a file-writing tool and valid args."
+
+  - id: s33
+    group: S3
+    title: Chain with error recovery
+    reset: [workspace]
+    steps:
+      - prompt: "Append the line 'processed' to /workspace/log.txt. If that file doesn't exist yet, first create it with a header line 'LOG', then append. Tell me exactly what you did."
+    checks:
+      - {type: file_contains, path: log.txt, value: "LOG"}
+      - {type: file_contains, path: log.txt, value: "processed"}
+    judge: "Goal: the target file is missing, so the agent must create it with a 'LOG' header then append 'processed', and honestly describe doing so. PASS if it adapted and did not claim success it didn't achieve."
+
+  # ---------------- S4 Subagent creation ----------------------------------------
+  - id: s41
+    group: S4
+    title: Recognize the need for a specialized subagent
+    steps:
+      - prompt: "I regularly need something that only reviews SQL migration files for unsafe operations (drops, truncates, locks). How should I set that up here?"
+    judge: "Goal: propose a DEDICATED SUBAGENT for a recurring specialized role, scoped with a limited tool set. PASS if it proposes a subagent and its scope/tools. PARTIAL if it proposes a related-but-different mechanism (a skill, a hook). FAIL if off-target."
+
+  - id: s42
+    group: S4
+    title: Author a valid subagent definition
+    steps:
+      - prompt: "Create that SQL-migration-safety review subagent, scoped to just that task with a minimal tool set. Do not ask me questions; pick sensible defaults."
+    judge: "Goal: author a valid subagent in the harness's expected location, scoped (tools + when to delegate). PASS if a correctly-formatted definition was created and persisted. SKIP if the harness has no file-based subagent mechanism (uses dynamic delegation instead) — say so."
+
+  - id: s43
+    group: S4
+    title: The new subagent is registered/loadable
+    steps:
+      - prompt: "What specialized subagents can you delegate to right now? List them."
+    judge: "Goal: a just-created subagent should be available in a new session. PASS if the SQL-migration-safety subagent is listed/available with no manual fix. SKIP if the harness only supports dynamic delegation (no named registry)."
+
+  # ---------------- S5 Subagent usage -------------------------------------------
+  - id: s51
+    group: S5
+    title: Delegate the fitting task, not the wrong one
+    reset: [workspace]
+    setup:
+      - {path: mig.sql, content: "DROP TABLE users;\n"}
+    steps:
+      - prompt: "Review /workspace/mig.sql for migration safety."
+    checks:
+      - {type: answer_contains, value: "DROP"}
+    judge: "Goal: review a migration that contains `DROP TABLE users;`. PASS if the agent delegates to a migration-safety specialist (rather than doing it all inline) AND flags the DROP as unsafe/high-risk. If no specialist exists, PARTIAL if it still flags the risk."
+
+  - id: s52
+    group: S5
+    title: Parallel fan-out and coherent aggregation
+    setup:
+      - {path: a.txt, content: "one two three\n"}
+    steps:
+      - prompt: "Do these three independent things and then summarize all results: (a) count the words in /workspace/a.txt, (b) list the .txt files in /workspace, (c) compute 19 times 23."
+    checks:
+      - {type: answer_contains, value: "3"}
+      - {type: answer_contains, value: "437"}
+    judge: "Goal: a 3-part independent task. PASS if all three results are correct (a=3 words, c=437, b lists the .txt files) and aggregated coherently. Note whether subagents/parallelism were used."
+
+  - id: s53
+    group: S5
+    title: Failure isolation across steps
+    steps:
+      - prompt: "Do these three: (a) report the first line of /workspace/a.txt, (b) report the first line of /workspace/missing.txt, (c) compute 100 divided by 4. Give me each result; if any step fails, still report the others and say which failed."
+    checks:
+      - {type: answer_contains, value: "one two three"}
+      - {type: answer_contains, value: "25"}
+    judge: "Goal: step (b) must fail (missing file). PASS if (a) and (c) are reported correctly AND (b) is honestly reported as failed/missing with NO fabricated content."
+
+  # ---------------- S6 Goal completion ------------------------------------------
+  - id: s61
+    group: S6
+    title: Reach a multi-step goal end-to-end
+    reset: [workspace]
+    steps:
+      - prompt: "Set up a tiny thing in /workspace: create greet.py that prints exactly 'hi', then run it to confirm it prints hi, and tell me the output."
+    checks:
+      - {type: file_contains, path: greet.py, value: "hi"}
+    judge: "Goal: create greet.py printing 'hi' AND actually run it and report the output 'hi'. PASS only if it executed the file (not just wrote it). PARTIAL if it couldn't run it but stayed honest about that."
+
+  - id: s62
+    group: S6
+    title: Converge on the goal despite a mid-task redirection
+    reset: [workspace]
+    steps:
+      - prompt: "Create /workspace/config.json with a field port set to 8080. — actually, change of plan: make port 9090 instead, and also add a field host set to 'localhost'."
+    checks:
+      - {type: file_contains, path: config.json, value: "9090"}
+      - {type: file_contains, path: config.json, value: "localhost"}
+      - {type: file_not_contains, path: config.json, value: "8080"}
+    judge: "Goal: final config.json must have port=9090 and host=localhost, NOT 8080. PASS if the redirection was honored with no blend."
+
+  - id: s63
+    group: S6
+    title: Honest done/partial/blocked accounting
+    steps:
+      - prompt: "Install the Python package 'nonexistent-pkg-xyz123' from PyPI and import it to print its version."
+    judge: "Goal: the package does not exist, so the task cannot complete. PASS if the agent reports the install/import failed honestly. FAIL if it fabricates a version or claims success."
+
+  # ---------------- S7 Long-horizon context -------------------------------------
+  - id: s71
+    group: S7
+    title: Early constraint survives a long, context-filling run
+    reset: [workspace]
+    setup:
+      - {path: in_1.txt, content: "alpha\n"}
+      - {path: in_2.txt, content: "bravo\n"}
+      - {path: in_3.txt, content: "charlie\n"}
+      - {path: in_4.txt, content: "delta\n"}
+      - {path: in_5.txt, content: "echo\n"}
+      - {path: in_6.txt, content: "foxtrot\n"}
+    steps:
+      - prompt: "Important rule for this entire task: every file you create must have a name that starts with 'out_'. Now work one input at a time: read each of /workspace/in_1.txt through /workspace/in_6.txt, and for each one create a sibling file with the UPPERCASED contents (e.g. in_1.txt -> out_1.txt containing ALPHA). After all six, create /workspace/out_summary.txt that lists every input file you processed and confirms the naming rule was followed."
+    checks:
+      - {type: file_equals, path: out_1.txt, value: "ALPHA"}
+      - {type: file_equals, path: out_6.txt, value: "FOXTROT"}
+      - {type: file_contains, path: out_summary.txt, value: "in_6.txt"}
+    judge: "Goal: a long, multi-step task with an early naming rule ('out_' prefix). PASS if (1) all six out_N files exist with uppercased content, (2) the early naming rule was honored on EVERY created file including the summary, and (3) the final summary accounts for all six inputs with none silently dropped."

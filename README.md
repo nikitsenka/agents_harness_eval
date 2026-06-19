@@ -5,8 +5,13 @@ underlying LLM**. Two harnesses, side by side:
 
 | Harness | What it is | How it's driven |
 |---|---|---|
-| **clean-cc** | Vanilla **Claude Code** — no project memory, no MCP, no skills | `claude -p … --strict-mcp-config` in an empty workspace |
+| **clean-cc** | **Claude Code** equipped with the same scaffolding a real deployment has — a `CLAUDE.md` "soul", skills, subagents, and file-backed memory — but **no MCP servers** | `claude -p … --strict-mcp-config` in the seeded `workspace/` |
 | **hermes** | **Hermes Agent** (Nous Research), containerized | `hermes -z …` |
+
+clean-cc ships its scaffolding under `clean-cc/workspace/` (`CLAUDE.md`,
+`.claude/skills/`, `.claude/agents/`, `memory/`) so the skill/subagent/memory
+scenarios run against an equipped instance. MCP is deliberately left out
+(`--strict-mcp-config`) to isolate harness behavior from MCP-tool overhead.
 
 ## What this measures (and what it doesn't)
 
@@ -20,8 +25,10 @@ management. A better harness makes the model punch above its weight.
 Hermes via its native `bedrock` provider). To compare on a different model,
 repoint both at the same backend — see [Switching the model](#switching-the-model).
 
-**Fairness controls:** same model + params, same tool surface, a fresh/empty
-workspace per run, and a clean session unless the scenario is about persistence.
+**Fairness controls:** same model + params, comparable scaffolding (both
+harnesses carry skills, subagents, and memory), the workspace reset to its
+seeded baseline per run, and a clean session unless the scenario is about
+persistence.
 
 ## Layout
 
@@ -35,16 +42,26 @@ agents_harness_eval/
 │   ├── docker-compose.yml #   cc + litellm (model router)
 │   ├── litellm-config.yaml#   "*" -> Bedrock Sonnet 4.6  (repoint to swap model)
 │   ├── .env.example
-│   └── workspace/         #   empty clean workspace (mounted)
+│   └── workspace/         #   seeded scaffolding (mounted):
+│       ├── CLAUDE.md      #     the "soul" — memory/skill/subagent conventions
+│       ├── .claude/settings.json   # autoMemoryDirectory -> /workspace/memory
+│       ├── .claude/skills/         # example skill (text-stats) in dir/SKILL.md form
+│       ├── .claude/agents/         # example subagent (file-reviewer)
+│       └── memory/        #     MEMORY.md index + seed entry
 ├── hermes/                # Hermes Agent baseline
 │   ├── docker-compose.yml #   cli + gateway; static AWS creds (SSO-cache fix)
 │   ├── .env.example
 │   ├── hermes-home/       #   tracked clean config (SOUL.md, config.yaml, ...)
 │   └── workspace/         #   empty clean workspace (mounted)
-└── runners/
-    ├── run-cc.sh          # run-cc.sh LABEL "prompt" [--continue]
-    ├── run-hermes.sh      # run-hermes.sh LABEL "prompt"
-    └── metrics.py         # answer + tools + tokens/latency (auto-detects format)
+├── scenarios/
+│   └── scenarios.yaml     # executable spec: prompts + deterministic checks + judge rubrics
+├── runners/
+│   ├── run-cc.sh          # run-cc.sh LABEL "prompt" [--continue]
+│   ├── run-hermes.sh      # run-hermes.sh LABEL "prompt"
+│   ├── run-eval.py        # driver: spec -> run -> checks -> blind judge -> results/
+│   ├── judge.py           # blind LLM judge (separate model call; harness-anonymous)
+│   └── metrics.py         # answer + tools + tokens/latency/cost + context (auto-detects)
+└── results/               # results.json + metrics.csv per run; dated reports
 ```
 
 ## Prerequisites
@@ -71,14 +88,21 @@ cd .. && ./runners/run-hermes.sh smoke "Reply with exactly: PONG"
 ```
 
 Each runner prints the answer, the tool calls, and a metrics line
-(`latency`, `in/out/cacheR/cacheW` tokens). Reset a harness between full runs:
-clean-cc `docker compose down && up`; Hermes `: > hermes-home/memories/USER.md`
-and remove any test skills under `hermes-home/skills/`.
+(`latency`, `in/out/cacheR/cacheW` tokens). Reset a harness between full runs —
+both now keep memory/skills on the host mount, so restore the seeded baseline
+with git rather than recreating the container:
+
+- **clean-cc:** `git checkout clean-cc/workspace && git clean -fd clean-cc/workspace`
+  (restores `CLAUDE.md`/`.claude`/`memory`, removes run artifacts). Container
+  memory also lives here via `autoMemoryDirectory`.
+- **hermes:** `: > hermes-home/memories/USER.md` and remove any test skills
+  under `hermes-home/skills/`.
 
 ## Scenarios
 
-The full scenario catalogue (S1–S6, harness-neutral Gherkin) lives in
-[docs/SCENARIOS.md](docs/SCENARIOS.md). At a glance:
+The full scenario catalogue (harness-neutral Gherkin) lives in
+[docs/SCENARIOS.md](docs/SCENARIOS.md); the **executable** spec the driver runs
+is [scenarios/scenarios.yaml](scenarios/scenarios.yaml). At a glance:
 
 | Group | Covers |
 |---|---|
@@ -88,10 +112,26 @@ The full scenario catalogue (S1–S6, harness-neutral Gherkin) lives in
 | **S4 — Subagent creation** | recognize · author · loads |
 | **S5 — Subagent usage** | delegate · fan-out · failure isolation |
 | **S6 — Goal completion** | end-to-end · mid-task redirection · honest done/partial/blocked |
+| **S7 — Long-horizon context** | early-constraint retention · no silent work loss (stresses the context metrics) |
 
 Memory scenarios are deliberately **implicit** — no "save / remember / note /
 memory" trigger words; the agent decides on its own what to persist and recalls
 it without being told where to look.
+
+### Running the eval
+
+```bash
+python3 runners/run-eval.py --harness cc      # or: --harness hermes
+python3 runners/run-eval.py --harness cc --only s32,s71 --no-judge   # subset, skip judge
+```
+
+The driver ([`runners/run-eval.py`](runners/run-eval.py)) reads the YAML spec and,
+per scenario: applies `reset`/`setup`, runs the prompt(s) via the harness runner,
+evaluates **deterministic `checks`** (file/answer/memory assertions), then asks a
+**blind judge** ([`runners/judge.py`](runners/judge.py) — a separate model call
+that sees the evidence but *not* which harness produced it) for the open-ended
+verdict. It writes `results.json` + `metrics.csv` (incl. price-weighted
+`cost_usd`) under `results/`. Both harnesses must be up first.
 
 ## Metrics
 
@@ -155,9 +195,10 @@ peaks** where both sides report, not byte-exact totals.
 | `latency` | wall-clock time to the final answer |
 | `in` / `out` | input / output tokens |
 | `cacheR` / `cacheW` | prompt-cache read / write tokens (the per-turn system-prompt overhead shows up here) |
-| `total` | sum of the above — raw cost proxy |
+| `total` | sum of the above — raw token proxy (overstates $: cache reads are ~10% of input price) |
+| `cost` (`cost_usd`) | **price-weighted** $ cost — token classes priced separately (Bedrock Sonnet rates in `metrics.py`). The honest cost number; use this, not `total`. |
 | `tools` | number of tool calls in the run |
-| **cost / success** | `total` ÷ passed runs — the efficiency number that matters. Cheap-but-wrong is not cheaper; compare harnesses on this, **not** raw `total`. |
+| **cost / success** | `cost` ÷ passed runs — the efficiency number that matters. Cheap-but-wrong is not cheaper; compare harnesses on this. |
 
 ### 4. Reliability — over N runs
 

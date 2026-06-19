@@ -162,3 +162,22 @@ Given a goal that cannot be fully completed because of a blocker outside the age
 When the agent ends the turn
 Then it reports the true status (done / partial / blocked-on-X) and what remains, rather than declaring success
 ```
+
+## S7 — Long-horizon context
+
+On a fixed model, context management is the binding constraint, so this group
+deliberately fills the window over many steps to exercise the context-efficiency
+metrics (ctx_peak, fill rate, compaction) — which short scenarios leave flat.
+
+**S7.1 — Early constraint survives a long run**
+```gherkin
+Given a constraint stated ONCE near the start of a long, multi-step task (e.g. "every output filename must start with run_")
+When the agent works through many subsequent steps that fill the context window
+Then it still honors that early constraint at the final step (no "forgot which convention applied")
+```
+**S7.2 — No silent work loss as context grows**
+```gherkin
+Given a task that processes a series of inputs while maintaining a running summary
+When the agent has accumulated a long trajectory
+Then every input is accounted for in the final summary (none silently dropped) and earlier results are not contradicted
+```
