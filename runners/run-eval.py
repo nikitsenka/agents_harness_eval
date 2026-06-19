@@ -38,7 +38,11 @@ def ws_path(h, rel):
 # ---- reset / setup ----------------------------------------------------------
 CC_SUBTREE = {"workspace": "clean-cc/workspace",
               "memory": "clean-cc/workspace/memory",
-              "skills": "clean-cc/workspace/.claude/skills"}
+              "skills": "clean-cc/workspace/.claude/skills",
+              "subagents": "clean-cc/workspace/.claude/agents"}
+# scratch reset clears loose run files but PRESERVES the scaffolding, so created
+# skills/subagents/memory accumulate across the run for inspection.
+SCRATCH_KEEP = {"CLAUDE.md", ".claude", "memory", ".gitkeep"}
 
 
 def _git_restore(path):
@@ -46,23 +50,29 @@ def _git_restore(path):
     sh(["bash", "-lc", f"git checkout -- {path} 2>/dev/null; git clean -fdx {path} >/dev/null 2>&1; true"])
 
 
+def _clear_scratch(h):
+    wd = os.path.join(ROOT, HARNESS[h]["ws"])
+    for f in os.listdir(wd):
+        if f not in SCRATCH_KEEP:
+            sh(["rm", "-rf", os.path.join(wd, f)])
+
+
 def reset(h, kinds):
     for kind in kinds:
-        if h == "cc":
+        if kind == "scratch":
+            _clear_scratch(h)
+        elif h == "cc":
             # clean-cc scaffolding (CLAUDE.md/.claude/memory) is seeded + tracked;
-            # restore it to the committed baseline rather than deleting it.
+            # restore the requested subtree to the committed baseline.
             sub = CC_SUBTREE.get(kind)
             if sub:
                 _git_restore(sub)
         else:  # hermes — state lives in hermes-home; workspace is an empty mount
             if kind == "workspace":
-                wd = os.path.join(ROOT, HARNESS[h]["ws"])
-                for f in os.listdir(wd):
-                    if f != ".gitkeep":
-                        sh(["rm", "-rf", os.path.join(wd, f)])
+                _clear_scratch(h)
             elif kind == "memory":
                 sh(["bash", "-lc", "rm -f hermes/hermes-home/memories/USER.md hermes/hermes-home/memories/*.lock"])
-            # hermes skills are bundled+host-mounted; per-eval skill reset is best-effort, skipped.
+            # hermes skills/subagents are dynamic/bundled; per-eval reset is best-effort, skipped.
 
 
 def setup(h, files):
@@ -152,6 +162,14 @@ def main():
         scen = [s for s in scen if s["id"] in keep]
     out_dir = os.path.join(ROOT, args.out or f"results/{args.harness}-run")
     os.makedirs(out_dir, exist_ok=True)
+
+    # Reset to a clean seeded baseline ONCE before the run. After this, state
+    # (skills/subagents/memory) accumulates and is left in place for inspection;
+    # per-scenario `reset` only clears scratch or the specific subtree a scenario
+    # needs. Nothing is reset after the run.
+    if not args.only:
+        print(f"[{args.harness}] initial reset to seeded baseline", flush=True)
+        reset(args.harness, ["workspace", "memory"])
 
     results = []
     for s in scen:

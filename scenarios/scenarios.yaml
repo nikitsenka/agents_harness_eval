@@ -6,8 +6,13 @@
 #
 # Per scenario:
 #   id, group, title
-#   reset:   optional list of [memory, skills, workspace] to clear BEFORE this run
-#            (omit to inherit prior state — this is how multi-scenario memory deps work)
+#   reset:   optional list to clear BEFORE this scenario (omit to inherit prior state —
+#            this is how multi-scenario memory deps work). Kinds:
+#              scratch   - loose run files only; KEEPS scaffolding (skills/agents/memory)
+#              memory | skills | subagents - restore that subtree to the seeded baseline
+#              workspace - full seeded restore
+#            State is reset only BEFORE scenarios, never after; created skills/
+#            subagents/memory accumulate across the run for inspection.
 #   setup:   optional files to create in the harness workspace before the first step
 #            [{path: notes.txt, content: "..."}]
 #   steps:   ordered prompts (>1 = multi-turn; each is a separate harness run)
@@ -26,13 +31,12 @@ scenarios:
   - id: s11
     group: S1
     title: Unprompted capture of a durable fact
-    reset: [memory, workspace]
+    reset: [memory, scratch]
     steps:
       - prompt: "Morning! Side note, our team's standard code-review SLA is 24 hours. Anyway, what is 12 times 8?"
     checks:
-      - {type: answer_contains, value: "96"}
       - {type: memory_contains, value: "24 hour"}
-    judge: "Goal: the user mentioned a durable fact (code-review SLA = 24 hours) in passing with NO instruction to remember it, and asked 12x8. PASS if the agent answered 96 AND persisted the SLA fact to long-term memory on its own. FAIL if it did not persist it."
+    judge: "Goal: a durable fact (code-review SLA = 24 hours) was mentioned in passing with NO instruction to remember it, alongside a trivial math question. The capability under test is UNPROMPTED persistence. PASS if the agent persisted the SLA fact to long-term memory on its own initiative (answering the math is incidental, and the final message may be a memory confirmation). FAIL only if it did not persist the fact."
 
   - id: s12
     group: S1
@@ -57,7 +61,8 @@ scenarios:
   - id: s14
     group: S1
     title: Restraint on the ephemeral
-    reset: [memory]
+    # no reset — lets the S1 memory evolution (capture -> update) accumulate for
+    # inspection; the check verifies the ephemeral was NOT added, regardless.
     steps:
       - prompt: "Ugh, I'm so tired today. Quick — what's 45 plus 17?"
     checks:
@@ -76,7 +81,7 @@ scenarios:
   - id: s21
     group: S2
     title: Recognize a repeated task warrants a skill
-    reset: [skills, workspace]
+    reset: [skills, scratch]
     steps:
       - prompt: "This is the third time I've asked you to convert a CSV into a markdown table and save it. Anything smarter we could do here?"
     judge: "Goal: after a repeated procedure, propose turning it into a reusable SKILL (not merely a hook or one-off script). PASS if it proposes a skill and roughly what would trigger it."
@@ -84,6 +89,7 @@ scenarios:
   - id: s22
     group: S2
     title: Author a correct, well-scoped skill
+    reset: [skills]   # clear any skill s21 may have proactively made, so THIS run does the authoring
     steps:
       - prompt: "Please create a skill that converts a CSV file into a Markdown table and saves it as a .md file; it should trigger on requests like 'turn this csv into a markdown table'."
     judge: "Goal: author a loadable, well-scoped skill. PASS if a skill artifact was created in the harness's expected on-disk format/location with a clear trigger description and runnable steps. PARTIAL if created but in the wrong layout (so it won't load). FAIL if nothing usable was created."
@@ -113,7 +119,7 @@ scenarios:
   - id: s32
     group: S3
     title: Correct tool with correct arguments
-    reset: [workspace]
+    reset: [scratch]
     steps:
       - prompt: "Create a file at /workspace/notes.txt containing exactly this text: alpha-bravo-charlie. Confirm when done."
     checks:
@@ -123,7 +129,7 @@ scenarios:
   - id: s33
     group: S3
     title: Chain with error recovery
-    reset: [workspace]
+    reset: [scratch]
     steps:
       - prompt: "Append the line 'processed' to /workspace/log.txt. If that file doesn't exist yet, first create it with a header line 'LOG', then append. Tell me exactly what you did."
     checks:
@@ -157,7 +163,7 @@ scenarios:
   - id: s51
     group: S5
     title: Delegate the fitting task, not the wrong one
-    reset: [workspace]
+    reset: [scratch]
     setup:
       - {path: mig.sql, content: "DROP TABLE users;\n"}
     steps:
@@ -192,7 +198,7 @@ scenarios:
   - id: s61
     group: S6
     title: Reach a multi-step goal end-to-end
-    reset: [workspace]
+    reset: [scratch]
     steps:
       - prompt: "Set up a tiny thing in /workspace: create greet.py that prints exactly 'hi', then run it to confirm it prints hi, and tell me the output."
     checks:
@@ -202,7 +208,7 @@ scenarios:
   - id: s62
     group: S6
     title: Converge on the goal despite a mid-task redirection
-    reset: [workspace]
+    reset: [scratch]
     steps:
       - prompt: "Create /workspace/config.json with a field port set to 8080. — actually, change of plan: make port 9090 instead, and also add a field host set to 'localhost'."
     checks:
@@ -222,7 +228,7 @@ scenarios:
   - id: s71
     group: S7
     title: Early constraint survives a long, context-filling run
-    reset: [workspace]
+    reset: [scratch]
     setup:
       - {path: in_1.txt, content: "alpha\n"}
       - {path: in_2.txt, content: "bravo\n"}
