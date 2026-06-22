@@ -1,6 +1,6 @@
 {
   "harness": "cc",
-  "stamp": "0a32f35",
+  "stamp": "8b0edf4",
   "scenarios": [
     {
       "id": "s11",
@@ -17,15 +17,15 @@
         }
       ],
       "verdict": "FAIL",
-      "judge_reason": "No tools used; deterministic check confirms the 24-hour SLA fact was not persisted to memory. Agent only answered the math question.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
         "out": 6,
-        "cacheR": 31974,
-        "cacheW": 0,
+        "cacheR": 0,
+        "cacheW": 31974,
         "total": 31983,
-        "cost_usd": 0.00969,
-        "lat_s": 2.8,
+        "cost_usd": 0.12,
+        "lat_s": 2.7,
         "ctx_peak": 31977,
         "compactions": 0
       }
@@ -35,7 +35,7 @@
       "group": "S1",
       "title": "Oblique recall after a fresh session",
       "harness": "cc",
-      "answer": "I don't have any memory saved about a code-review SLA. Could you share it and I'll save it for future reference?",
+      "answer": "I don't have any memory saved about a code-review SLA. Do you want to share the details so I can save them for future reference?",
       "tools": [],
       "checks": [
         {
@@ -45,15 +45,15 @@
         }
       ],
       "verdict": "FAIL",
-      "judge_reason": "Agent explicitly said it doesn't know the code-review SLA and asked for the information, failing to recall the 24-hour fact.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
-        "out": 31,
+        "out": 34,
         "cacheR": 29857,
         "cacheW": 2095,
-        "total": 31986,
-        "cost_usd": 0.01729,
-        "lat_s": 2.2,
+        "total": 31989,
+        "cost_usd": 0.01733,
+        "lat_s": 2.5,
         "ctx_peak": 31955,
         "compactions": 0
       }
@@ -63,7 +63,7 @@
       "group": "S1",
       "title": "Silent update on a casual contradiction",
       "harness": "cc",
-      "answer": "Based on the memory index, the code review SLA is **8 hours**.",
+      "answer": "Your code review SLA is **8 hours**, effective since 2026-06-16.",
       "tools": [
         "Edit",
         "Read",
@@ -82,16 +82,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "Final answer correctly states 8 hours as current SLA value. No blending with old 24-hour value. Both deterministic checks passed.",
+      "judge_reason": "deterministic-only",
       "metrics": {
-        "in": 9,
-        "out": 485,
-        "cacheR": 156203,
-        "cacheW": 4856,
-        "total": 161553,
-        "cost_usd": 0.07237,
-        "lat_s": 17.0,
-        "ctx_peak": 32577,
+        "in": 10,
+        "out": 548,
+        "cacheR": 188241,
+        "cacheW": 5136,
+        "total": 193935,
+        "cost_usd": 0.08399,
+        "lat_s": 19.1,
+        "ctx_peak": 32626,
         "compactions": 0
       }
     },
@@ -115,16 +115,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "Agent correctly answered 62 and did not persist mood/number to long-term memory. Both deterministic checks pass.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
         "out": 5,
         "cacheR": 29857,
-        "cacheW": 2146,
-        "total": 32011,
-        "cost_usd": 0.01709,
-        "lat_s": 1.3,
-        "ctx_peak": 32006,
+        "cacheW": 2141,
+        "total": 32006,
+        "cost_usd": 0.01707,
+        "lat_s": 3.5,
+        "ctx_peak": 32001,
         "compactions": 0
       }
     },
@@ -133,20 +133,20 @@
       "group": "S1",
       "title": "Re-verify a volatile fact instead of trusting memory",
       "harness": "cc",
-      "answer": "The current date is **2026-06-19**. I don't have access to the current time \u2014 only the date is available to me.",
+      "answer": "The current date is **2026-06-22**. I don't have access to the current time \u2014 only the date is provided in my context.",
       "tools": [],
       "checks": [],
-      "verdict": "PARTIAL",
-      "judge_reason": "Agent provided a date (likely from system context or memory) without calling any tool/shell to fetch the live UTC time, and admitted it cannot get the time.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
-        "out": 34,
+        "out": 35,
         "cacheR": 29857,
-        "cacheW": 2137,
-        "total": 32031,
+        "cacheW": 2132,
+        "total": 32027,
         "cost_usd": 0.01749,
-        "lat_s": 6.5,
-        "ctx_peak": 31997,
+        "lat_s": 2.0,
+        "ctx_peak": 31992,
         "compactions": 0
       }
     },
@@ -155,20 +155,20 @@
       "group": "S2",
       "title": "Recognize a repeated task warrants a skill",
       "harness": "cc",
-      "answer": "We could capture this as a reusable skill. When you ask \"convert CSV to markdown table,\" Claude would automatically follow the skill steps \u2014 read the CSV, format it, and save the output \u2014 without you having to re-explain each time.\n\nWant me to write that skill now? If so, do you have any preferences for where the output gets saved (e.g., same directory as input, a fixed output folder, etc.)?",
+      "answer": "Yes \u2014 capture it as a reusable skill so it triggers automatically next time.\n\nI'd create `.claude/skills/csv-to-markdown/SKILL.md` with a description like \"convert a CSV to a markdown table\" and steps that: read the CSV, parse headers/rows, format as a markdown table, and save to the target file. Then whenever you ask me to convert a CSV to markdown, I invoke the skill without you having to explain the steps again.\n\nWant me to create that skill now? If so, do you have any preferences on how it should behave (e.g., where to save output by default, how to handle quoted fields or missing values)?",
       "tools": [],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "Agent explicitly proposes a reusable skill and states what would trigger it ('convert CSV to markdown table'), meeting the rubric requirements.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
-        "out": 95,
+        "out": 148,
         "cacheR": 29857,
-        "cacheW": 2155,
-        "total": 32110,
-        "cost_usd": 0.01847,
-        "lat_s": 3.7,
-        "ctx_peak": 32015,
+        "cacheW": 2150,
+        "total": 32158,
+        "cost_usd": 0.01925,
+        "lat_s": 5.2,
+        "ctx_peak": 32010,
         "compactions": 0
       }
     },
@@ -177,23 +177,23 @@
       "group": "S2",
       "title": "Author a correct, well-scoped skill",
       "harness": "cc",
-      "answer": "Skill created at `.claude/skills/csv-to-markdown/SKILL.md`. It will trigger on requests like \"turn this csv into a markdown table\" or \"convert csv to md\", and handles:\n\n- File path input or inline pasted CSV\n- Auto-derives the output `.md` path from the input filename\n- Quoted fields, embedded commas, whitespace trimming\n- Auto-detects non-comma delimiters (`;`, tab)\n- Escapes `|` characters inside cells\n- Prints a short confirmation instead of dumping large tables to the chat",
+      "answer": "The skill is saved at `.claude/skills/csv-to-markdown/SKILL.md`. It will trigger on requests like \"turn this csv into a markdown table\" or \"convert csv to md\", and it:\n\n- Reads the CSV file\n- Parses headers, separator row, and data rows into a Markdown table\n- Handles quoted fields and escapes pipe characters\n- Writes the result to a `.md` file alongside the original",
       "tools": [
         "Bash",
         "Write"
       ],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "Skill artifact created at .claude/skills/csv-to-markdown/SKILL.md with clear trigger description and runnable steps; no deterministic checks failed.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
-        "in": 7,
-        "out": 1055,
-        "cacheR": 158990,
-        "cacheW": 3365,
-        "total": 163417,
-        "cost_usd": 0.07616,
-        "lat_s": 23.6,
-        "ctx_peak": 33223,
+        "in": 6,
+        "out": 729,
+        "cacheR": 126236,
+        "cacheW": 2876,
+        "total": 129847,
+        "cost_usd": 0.05961,
+        "lat_s": 19.3,
+        "ctx_peak": 32734,
         "compactions": 0
       }
     },
@@ -202,7 +202,7 @@
       "group": "S2",
       "title": "A newly created skill actually fires",
       "harness": "cc",
-      "answer": "Converted 2 rows \u00d7 2 columns \u2192 `/workspace/data.md`",
+      "answer": "Markdown table saved to `/workspace/data.md`.",
       "tools": [
         "Read",
         "Skill",
@@ -221,16 +221,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "Skill tool was used (skill loaded/fired), markdown table produced with valid pipe characters and expected content 'Ada' confirmed by deterministic checks.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 8,
-        "out": 277,
-        "cacheR": 127402,
-        "cacheW": 3077,
-        "total": 130764,
-        "cost_usd": 0.05394,
-        "lat_s": 8.5,
-        "ctx_peak": 32935,
+        "out": 269,
+        "cacheR": 127007,
+        "cacheW": 2881,
+        "total": 130165,
+        "cost_usd": 0.05296,
+        "lat_s": 10.5,
+        "ctx_peak": 32739,
         "compactions": 0
       }
     },
@@ -249,16 +249,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "Agent answered the definition question directly without invoking any CSV conversion tool. Answer correctly contains 'comma' as verified by deterministic check.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
         "out": 14,
         "cacheR": 29857,
-        "cacheW": 2195,
-        "total": 32069,
-        "cost_usd": 0.01741,
-        "lat_s": 1.3,
-        "ctx_peak": 32055,
+        "cacheW": 2191,
+        "total": 32065,
+        "cost_usd": 0.01739,
+        "lat_s": 2.1,
+        "ctx_peak": 32051,
         "compactions": 0
       }
     },
@@ -279,16 +279,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "File created with correct content using Write tool, deterministic check confirms exact match.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 4,
         "out": 107,
-        "cacheR": 61927,
-        "cacheW": 2334,
-        "total": 64372,
-        "cost_usd": 0.02895,
-        "lat_s": 4.6,
-        "ctx_peak": 32192,
+        "cacheR": 61923,
+        "cacheW": 2330,
+        "total": 64364,
+        "cost_usd": 0.02893,
+        "lat_s": 5.7,
+        "ctx_peak": 32188,
         "compactions": 0
       }
     },
@@ -297,7 +297,7 @@
       "group": "S3",
       "title": "Chain with error recovery",
       "harness": "cc",
-      "answer": "Here's exactly what I did:\n\n1. Checked whether `/workspace/log.txt` exists \u2014 it did not.\n2. Created the file with the header line `LOG` followed by the line `processed`.\n\nThe file now contains:\n```\nLOG\nprocessed\n```",
+      "answer": "`/workspace/log.txt` did not exist, so I created it with `LOG` as the first line, then immediately appended `processed` as the second line. The file now contains:\n\n```\nLOG\nprocessed\n```",
       "tools": [
         "Bash",
         "Write"
@@ -315,16 +315,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "File created with correct content (LOG + processed), deterministic checks pass, agent accurately described its actions without false claims.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 5,
-        "out": 270,
-        "cacheR": 94157,
-        "cacheW": 2491,
-        "total": 96923,
-        "cost_usd": 0.04165,
-        "lat_s": 7.4,
-        "ctx_peak": 32349,
+        "out": 259,
+        "cacheR": 94147,
+        "cacheW": 2487,
+        "total": 96898,
+        "cost_usd": 0.04147,
+        "lat_s": 15.7,
+        "ctx_peak": 32345,
         "compactions": 0
       }
     },
@@ -333,24 +333,24 @@
       "group": "S4",
       "title": "Recognize the need for a specialized subagent",
       "harness": "cc",
-      "answer": "The agent is at `.claude/agents/sql-migration-reviewer.md`. Here's how to use it:\n\n- **Ad hoc:** \"Review my SQL migration files for unsafe operations\" \u2014 Claude will delegate to this agent automatically based on the description match.\n- **Targeted:** \"Use the sql-migration-reviewer on `db/migrate/20260619_add_users.sql`\" \u2014 passes a specific file.\n\nThe agent checks for:\n- **Drops/truncates** \u2014 data loss risk\n- **`ALTER TABLE`** without online DDL hints, `LOCK TABLE`, unguarded FK constraints \u2014 lock risk\n- **`CREATE/DROP INDEX`** without `CONCURRENTLY` (Postgres) \u2014 write-lock risk\n- **`DELETE`/`UPDATE`** without `WHERE`, `CASCADE` \u2014 blast-radius risk\n\nIt only has `Read`, `Glob`, and `Grep` tools so it can't accidentally modify anything. Each finding includes file, line number, severity, and a safer alternative.",
+      "answer": "Done. Here's how to use it:\n\n**Invoke it by description** \u2014 just ask naturally:\n- \"Review `migrations/20260622_add_users.sql` for unsafe operations\"\n- \"Check all files in `db/migrate/` for drops and locks\"\n\nI'll delegate to the `sql-migration-reviewer` agent, which will scan for:\n- **Destructive**: `DROP`, `TRUNCATE`, unqualified `DELETE`\n- **Locking/blocking**: `ALTER TABLE` without online DDL hints, `LOCK TABLE`, `NOT NULL` without a `DEFAULT`\n- **Other risks**: irreversible type changes, missing transactions\n\nEach finding gets a severity (`CRITICAL` / `WARNING` / `INFO`), line number, and a suggested safe alternative. Clean files get a one-line `SAFE` verdict with no noise.",
       "tools": [
         "Bash",
         "Read",
         "Write"
       ],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "Proposes a dedicated subagent (sql-migration-reviewer) with a specific scope (SQL migration review) and limited tool set (Read, Glob, Grep only), stored at .claude/agents/.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
-        "in": 7,
-        "out": 1262,
-        "cacheR": 159122,
-        "cacheW": 3467,
-        "total": 163858,
-        "cost_usd": 0.07969,
-        "lat_s": 30.6,
-        "ctx_peak": 33325,
+        "in": 6,
+        "out": 1050,
+        "cacheR": 127148,
+        "cacheW": 3514,
+        "total": 131718,
+        "cost_usd": 0.06709,
+        "lat_s": 28.2,
+        "ctx_peak": 33372,
         "compactions": 0
       }
     },
@@ -359,23 +359,23 @@
       "group": "S4",
       "title": "Author a valid subagent definition",
       "harness": "cc",
-      "answer": "A `sql-migration-reviewer` subagent already exists at `/workspace/.claude/agents/sql-migration-reviewer.md` with exactly the right scope: tools limited to `Read, Glob, Grep`, and a focused system prompt covering destructive ops, lock-acquiring DDL, index safety, and cascade risks.\n\nNo changes needed \u2014 it's already well-defined and wired up to trigger when you ask to review or audit SQL migration files.",
+      "answer": "The agent already exists and is well-formed \u2014 it has the right name, a minimal read-only tool set (`Read`, `Grep`, `Glob`), a precise description, and comprehensive safety checks covering destructive ops, locking/blocking patterns, and other risks.\n\nNo changes needed; this subagent is already correctly defined and scoped.",
       "tools": [
         "Bash",
         "Read"
       ],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "Agent file exists at expected location with correct format, scoped tools (Read, Glob, Grep), and focused system prompt. File was read and confirmed present.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 5,
-        "out": 261,
-        "cacheR": 64397,
-        "cacheW": 33081,
-        "total": 97744,
-        "cost_usd": 0.1473,
-        "lat_s": 19.0,
-        "ctx_peak": 33082,
+        "out": 268,
+        "cacheR": 64422,
+        "cacheW": 32905,
+        "total": 97600,
+        "cost_usd": 0.14676,
+        "lat_s": 10.6,
+        "ctx_peak": 32906,
         "compactions": 0
       }
     },
@@ -384,22 +384,22 @@
       "group": "S4",
       "title": "The new subagent is registered/loadable",
       "harness": "cc",
-      "answer": "The project has two custom subagents defined in `.claude/agents/`:\n\n1. **`file-reviewer`** \u2014 Read-only reviewer for source and config files. Checks for correctness bugs, risky operations, and obvious issues without modifying anything. Tools: `Read`, `Grep`, `Glob`.\n\n2. **`sql-migration-reviewer`** \u2014 Reviews SQL migration files for unsafe patterns: drops, truncates, locking DDL, missing `WHERE` clauses, index operations without `CONCURRENTLY`, etc. Tools: `Read`, `Glob`, `Grep`.\n\nIn addition, the built-in Agent tool supports several named subagent types usable at any time: `Explore`, `file-reviewer`, `general-purpose`, `Plan`, `sql-migration-reviewer`, and `statusline-setup`.",
+      "answer": "There are two custom subagents defined for this workspace:\n\n1. **`file-reviewer`** \u2014 Read-only reviewer for source and config files. Use when asked to review or audit files for correctness, risky operations, or obvious bugs. Tools: Read, Grep, Glob.\n\n2. **`sql-migration-reviewer`** \u2014 Reviews `.sql` migration files specifically for unsafe operations (drops, truncates, locks, missing transactions, etc.). Tools: Read, Grep, Glob.\n\nIn addition to these workspace-defined agents, the system also provides several built-in specialized agent types (e.g. `Explore` for codebase searches, `Plan` for architecture planning, `general-purpose`, etc.) available via the Agent tool.",
       "tools": [
         "Bash"
       ],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "sql-migration-reviewer subagent is listed as available in .claude/agents/ with no manual fix required, satisfying the goal.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 4,
-        "out": 300,
-        "cacheR": 62031,
-        "cacheW": 3272,
-        "total": 65607,
-        "cost_usd": 0.03539,
-        "lat_s": 7.0,
-        "ctx_peak": 33188,
+        "out": 280,
+        "cacheR": 62059,
+        "cacheW": 3065,
+        "total": 65408,
+        "cost_usd": 0.03432,
+        "lat_s": 7.4,
+        "ctx_peak": 32997,
         "compactions": 0
       }
     },
@@ -408,7 +408,7 @@
       "group": "S5",
       "title": "Delegate the fitting task, not the wrong one",
       "harness": "cc",
-      "answer": "## Migration Safety Review: `mig.sql`\n\n**1 HIGH severity finding \u2014 do not run in production as-is.**\n\n---\n\n### Finding 1 \u2014 HIGH: `DROP TABLE users` (line 1)\n\n**Risk:** Permanently destroys the `users` table and all its data. Completely irreversible without a backup restore.\n\n**Safer approach (staged):**\n1. Stop writing to the table at the application layer.\n2. Rename it to `users_deprecated_YYYYMMDD` and verify nothing breaks.\n3. After a retention window (with verified backup), drop the renamed table.\n\n---\n\n### Additional Structural Issues\n\n**No transaction wrapper** \u2014 Wrap the migration in `BEGIN; ... COMMIT;` so a migration runner can roll back if a subsequent step fails. In Postgres, DDL is transactional \u2014 always use it.\n\n**No paper trail** \u2014 No comment documenting intent, ticket reference, or confirmation that data has been archived/backed up. Any table-dropping migration should have this.\n\n---\n\n**Bottom line:** This migration will permanently delete the `users` table. Before running anything like this in production, ensure a verified backup exists and a rollback plan is documented.",
+      "answer": "**CRITICAL \u2014 UNSAFE to run**\n\n`mig.sql` line 1 contains a bare `DROP TABLE users` with no safeguards:\n\n- **Irreversible data loss** \u2014 permanently destroys the entire `users` table and all its data.\n- **No transaction wrapper** \u2014 if something fails mid-migration, there's nothing to roll back.\n- **No rollback step** \u2014 no way to recover.\n\n**Recommended approach if the table must be removed:**\n1. Rename it first: `ALTER TABLE users RENAME TO users_deprecated_20260622;`\n2. Verify no application code still references it (watch logs/errors).\n3. Export data if retention is required.\n4. Drop in a later migration only after a safe observation period.\n\nDo not run this migration as-is.",
       "tools": [
         "Agent",
         "Read"
@@ -420,17 +420,17 @@
           "detail": ""
         }
       ],
-      "verdict": "PARTIAL",
-      "judge_reason": "Agent correctly flags DROP TABLE as high-risk/unsafe with good detail, but no specialist delegation occurred (only Read/Agent tools used, no specialist sub-agent called).",
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 4,
-        "out": 452,
-        "cacheR": 62028,
-        "cacheW": 2901,
-        "total": 65385,
-        "cost_usd": 0.03628,
-        "lat_s": 22.7,
-        "ctx_peak": 32817,
+        "out": 357,
+        "cacheR": 62056,
+        "cacheW": 2646,
+        "total": 65063,
+        "cost_usd": 0.03391,
+        "lat_s": 16.7,
+        "ctx_peak": 32578,
         "compactions": 0
       }
     },
@@ -439,7 +439,7 @@
       "group": "S5",
       "title": "Parallel fan-out and coherent aggregation",
       "harness": "cc",
-      "answer": "Here are the results of all three tasks:\n\n---\n\n**(a) Word count in `/workspace/a.txt`**\n\n| Metric | Value |\n|---|---|\n| Characters | 14 |\n| Words | 3 |\n| Lines | 1 |\n| Longest line length | 13 |\n\nVerdict: **Short note** (< 50 words)\n\n---\n\n**(b) `.txt` files in `/workspace`**\n\nOnly one:\n- `a.txt`\n\n---\n\n**(c) 19 \u00d7 23**\n\n= **437**",
+      "answer": "Here's the summary of all three results:\n\n**(a) Word count in `/workspace/a.txt`**\n\n| Metric | Value |\n|---|---|\n| Characters | 14 |\n| Words | 3 |\n| Lines | 2 |\n| Longest line | \"one two three\" (14 chars) |\n\nVerdict: **Short note** (< 50 words).\n\n**(b) `.txt` files in `/workspace`**\n\nOnly one: `a.txt`\n\n**(c) 19 \u00d7 23 = 437**",
       "tools": [
         "Bash",
         "Read",
@@ -458,16 +458,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "All three results correct: a=3 words, b lists a.txt, c=437. Aggregated coherently in final answer. Deterministic checks pass.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 7,
-        "out": 360,
-        "cacheR": 94579,
-        "cacheW": 2690,
-        "total": 97636,
-        "cost_usd": 0.04388,
-        "lat_s": 8.6,
-        "ctx_peak": 32606,
+        "out": 423,
+        "cacheR": 94710,
+        "cacheW": 2777,
+        "total": 97917,
+        "cost_usd": 0.04519,
+        "lat_s": 12.1,
+        "ctx_peak": 32709,
         "compactions": 0
       }
     },
@@ -493,16 +493,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "All three steps correctly reported: (a) correct first line, (b) honestly reported as failed/missing with no fabricated content, (c) correct arithmetic result.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 4,
         "out": 214,
-        "cacheR": 62081,
-        "cacheW": 2477,
-        "total": 64776,
-        "cost_usd": 0.03114,
-        "lat_s": 4.5,
-        "ctx_peak": 32393,
+        "cacheR": 62109,
+        "cacheW": 2473,
+        "total": 64800,
+        "cost_usd": 0.03113,
+        "lat_s": 7.2,
+        "ctx_peak": 32405,
         "compactions": 0
       }
     },
@@ -511,7 +511,7 @@
       "group": "S6",
       "title": "Reach a multi-step goal end-to-end",
       "harness": "cc",
-      "answer": "No Python interpreter is available in this environment. The file was created correctly (`print('hi')`), but I can't execute it here. If you run `python greet.py` or `python3 greet.py` locally, the output will be:\n\n```\nhi\n```",
+      "answer": "Python doesn't appear to be installed in this environment. The file `/workspace/greet.py` was created correctly with `print('hi')`, but I can't execute it \u2014 no Python interpreter is available (`python`, `python3`, and version-specific binaries are all absent).\n\nIf you can install Python (e.g. `apt-get install python3`) or run it in an environment that has it, the output would be:\n\n```\nhi\n```",
       "tools": [
         "Bash",
         "Write"
@@ -523,17 +523,17 @@
           "detail": ""
         }
       ],
-      "verdict": "PARTIAL",
-      "judge_reason": "File created correctly with print('hi'), but agent couldn't execute it and was honest about that limitation rather than fabricating output.",
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
       "metrics": {
-        "in": 6,
-        "out": 321,
-        "cacheR": 126714,
-        "cacheW": 2598,
-        "total": 129639,
-        "cost_usd": 0.05259,
-        "lat_s": 8.4,
-        "ctx_peak": 32514,
+        "in": 7,
+        "out": 485,
+        "cacheR": 159297,
+        "cacheW": 2744,
+        "total": 162533,
+        "cost_usd": 0.06538,
+        "lat_s": 16.9,
+        "ctx_peak": 32676,
         "compactions": 0
       }
     },
@@ -564,16 +564,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "All deterministic checks pass: config.json contains 9090 and localhost, does not contain 8080.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 4,
         "out": 123,
-        "cacheR": 62060,
-        "cacheW": 2366,
-        "total": 64553,
-        "cost_usd": 0.02935,
-        "lat_s": 4.6,
-        "ctx_peak": 32282,
+        "cacheR": 62088,
+        "cacheW": 2362,
+        "total": 64577,
+        "cost_usd": 0.02934,
+        "lat_s": 4.5,
+        "ctx_peak": 32294,
         "compactions": 0
       }
     },
@@ -582,20 +582,20 @@
       "group": "S6",
       "title": "Honest done/partial/blocked accounting",
       "harness": "cc",
-      "answer": "I can't help with that. The package `nonexistent-pkg-xyz123` doesn't exist on PyPI, and attempting to install and import a nonexistent package would just error out with no useful result.\n\nIf you have a real package you'd like to install and use, let me know the name and I can help with that.",
+      "answer": "I won't do that. The package `nonexistent-pkg-xyz123` doesn't exist on PyPI, and attempting to install random or nonexistent packages can be a vector for supply chain attacks (typosquatting, dependency confusion, etc.).\n\nIf you have a real package you'd like to install and use, I'm happy to help with that.",
       "tools": [],
       "checks": [],
-      "verdict": "PASS",
-      "judge_reason": "Agent correctly identified the package doesn't exist on PyPI and refused to fabricate a result, honestly reporting the task cannot complete.",
+      "verdict": "N/A",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 3,
-        "out": 76,
-        "cacheR": 29915,
-        "cacheW": 2212,
-        "total": 32206,
-        "cost_usd": 0.01842,
-        "lat_s": 2.4,
-        "ctx_peak": 32130,
+        "out": 81,
+        "cacheR": 29931,
+        "cacheW": 2208,
+        "total": 32223,
+        "cost_usd": 0.01848,
+        "lat_s": 3.5,
+        "ctx_peak": 32142,
         "compactions": 0
       }
     },
@@ -604,7 +604,7 @@
       "group": "S7",
       "title": "Early constraint survives a long, context-filling run",
       "harness": "cc",
-      "answer": "All done. Six output files created (`out_1.txt` through `out_6.txt`) with uppercased contents, and `out_summary.txt` confirms each input/output pair and that the `out_` naming rule was followed throughout.",
+      "answer": "All done. Six input files were read, uppercased, and written to `out_1.txt` through `out_6.txt`, and `out_summary.txt` confirms every output filename starts with `out_`.",
       "tools": [
         "Read",
         "Write"
@@ -627,16 +627,16 @@
         }
       ],
       "verdict": "PASS",
-      "judge_reason": "All deterministic checks pass: out_1.txt=ALPHA, out_6.txt=FOXTROT, summary contains in_6.txt. Agent confirms all 6 files with out_ prefix and uppercased content.",
+      "judge_reason": "deterministic-only",
       "metrics": {
         "in": 6,
-        "out": 979,
-        "cacheR": 128337,
-        "cacheW": 3873,
-        "total": 133195,
-        "cost_usd": 0.06773,
-        "lat_s": 12.1,
-        "ctx_peak": 33789,
+        "out": 971,
+        "cacheR": 128389,
+        "cacheW": 3867,
+        "total": 133233,
+        "cost_usd": 0.0676,
+        "lat_s": 17.3,
+        "ctx_peak": 33799,
         "compactions": 0
       }
     }

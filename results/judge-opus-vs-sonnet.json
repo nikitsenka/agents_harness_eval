@@ -17,15 +17,15 @@
  },
  "cc_s15": {
   "opus": "FAIL",
-  "recorded": "PARTIAL"
+  "recorded": "N/A"
  },
  "cc_s21": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "cc_s22": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "cc_s23": {
   "opus": "PASS",
@@ -45,19 +45,19 @@
  },
  "cc_s41": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "cc_s42": {
-  "opus": "PASS",
-  "recorded": "PASS"
+  "opus": "PARTIAL",
+  "recorded": "N/A"
  },
  "cc_s43": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "cc_s51": {
   "opus": "PASS",
-  "recorded": "PARTIAL"
+  "recorded": "PASS"
  },
  "cc_s52": {
   "opus": "PASS",
@@ -69,7 +69,7 @@
  },
  "cc_s61": {
   "opus": "PARTIAL",
-  "recorded": "PARTIAL"
+  "recorded": "PASS"
  },
  "cc_s62": {
   "opus": "PASS",
@@ -77,7 +77,7 @@
  },
  "cc_s63": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "cc_s71": {
   "opus": "PASS",
@@ -101,19 +101,19 @@
  },
  "hermes_s15": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "hermes_s21": {
-  "opus": "PARTIAL",
-  "recorded": "PARTIAL"
+  "opus": "PASS",
+  "recorded": "N/A"
  },
  "hermes_s22": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "hermes_s23": {
-  "opus": "PASS",
-  "recorded": "PARTIAL"
+  "opus": "PARTIAL",
+  "recorded": "PASS"
  },
  "hermes_s31": {
   "opus": "PASS",
@@ -129,19 +129,19 @@
  },
  "hermes_s41": {
   "opus": "PARTIAL",
-  "recorded": "PARTIAL"
+  "recorded": "N/A"
  },
  "hermes_s42": {
-  "opus": "SKIP",
-  "recorded": "SKIP"
+  "opus": "PASS",
+  "recorded": "N/A"
  },
  "hermes_s43": {
-  "opus": "SKIP",
-  "recorded": "SKIP"
+  "opus": "PASS",
+  "recorded": "N/A"
  },
  "hermes_s51": {
   "opus": "PARTIAL",
-  "recorded": "PARTIAL"
+  "recorded": "PASS"
  },
  "hermes_s52": {
   "opus": "PASS",
@@ -152,19 +152,19 @@
   "recorded": "PASS"
  },
  "hermes_s61": {
-  "opus": "PASS",
-  "recorded": "PASS"
- },
- "hermes_s62": {
   "opus": "FAIL",
   "recorded": "FAIL"
+ },
+ "hermes_s62": {
+  "opus": "PASS",
+  "recorded": "PASS"
  },
  "hermes_s63": {
   "opus": "PASS",
-  "recorded": "PASS"
+  "recorded": "N/A"
  },
  "hermes_s71": {
-  "opus": "FAIL",
-  "recorded": "FAIL"
+  "opus": "PASS",
+  "recorded": "PASS"
  }
 }
