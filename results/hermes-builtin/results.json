@@ -1,0 +1,159 @@
+{
+  "harness": "hermes",
+  "condition": "built-in",
+  "stamp": "2fb509c",
+  "scenarios": [
+    {
+      "id": "hm1",
+      "group": "HM",
+      "title": "Recall the value two changes before the current one",
+      "harness": "hermes",
+      "answer": "I can't locate the underlying memory file on disk to inspect its git history. But I can answer this directly from what's visible in context:\n\n- Current value: 99.95%\n- Your user profile memory shows only one entry for the error-budget target, and the memory tool just confirmed it already existed (no duplicate added), meaning it was set in a prior session.\n\nWithout a git log or version history of the memory file, I can't retrieve what the value was two changes ago. The memory store doesn't surface a changelog through any tool I have access to.\n\nIf you have a postmortem document or incident log that records those prior SLO values, point me at it and I'll pull the timeline from there. Alternatively, if you remember the sequence of values (e.g. it went 99.9% -> 99.95% -> ...), I can help you reconstruct the two-changes-back figure.",
+      "tools": [
+        "memory",
+        "terminal"
+      ],
+      "checks": [
+        {
+          "ok": false,
+          "desc": "answer contains '99.5'",
+          "detail": ""
+        }
+      ],
+      "verdict": "FAIL",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 26,
+        "out": 1620,
+        "cacheR": 139383,
+        "cacheW": 64276,
+        "total": 205305,
+        "cost_usd": 0.30722,
+        "lat_s": 47.8,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm2",
+      "group": "HM",
+      "title": "Recall the original (first) value after several changes",
+      "harness": "hermes",
+      "answer": "Based on my current memory, I only have the current rate limit recorded (2000 requests/sec), but there's no history of previous values stored. I don't have a record of the original rate limit before the increases.\n\nDo you remember what it was? If you let me know, I can save the full history so we don't lose track of it again.",
+      "tools": [
+        "memory",
+        "terminal"
+      ],
+      "checks": [
+        {
+          "ok": false,
+          "desc": "answer contains '120'",
+          "detail": ""
+        }
+      ],
+      "verdict": "FAIL",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 23,
+        "out": 1087,
+        "cacheR": 112406,
+        "cacheW": 51668,
+        "total": 165184,
+        "cost_usd": 0.24385,
+        "lat_s": 33.1,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm3",
+      "group": "HM",
+      "title": "Recall the predecessor entity in a dated rotation",
+      "harness": "hermes",
+      "answer": "Based on my memory, the on-call rotation is:\n\n- Week 1: Ana\n- Week 2: Ben\n- Week 3: Cara\n- Week 4: Dmitri (current week)\n\nSo the week before the current week (week 3) was **Cara**.",
+      "tools": [
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains 'Cara'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 21,
+        "out": 946,
+        "cacheR": 87307,
+        "cacheW": 51463,
+        "total": 139737,
+        "cost_usd": 0.23342,
+        "lat_s": 28.4,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm4",
+      "group": "HM",
+      "title": "Recall a metric two updates ago",
+      "harness": "hermes",
+      "answer": "Based on your memory profile, I can see the current seat price is **$35 per user**.\n\nHowever, I only have the current value stored \u2014 I don't have a history of previous values. The memory tool stores the latest fact, not a changelog.\n\nTo find what the seat price was two changes ago, I'd need to check past conversation transcripts. Want me to search through session history for earlier mentions of the seat price?",
+      "tools": [
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": false,
+          "desc": "answer contains '14'",
+          "detail": ""
+        }
+      ],
+      "verdict": "FAIL",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 22,
+        "out": 958,
+        "cacheR": 99845,
+        "cacheW": 51459,
+        "total": 152284,
+        "cost_usd": 0.23737,
+        "lat_s": 32.3,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm5",
+      "group": "HM",
+      "title": "Multi-hop join across separate facts (both-pass control)",
+      "harness": "hermes",
+      "answer": "Based on what I know: Diego owns the payments service and is based in the Lisbon office (UTC+0). Since Lisbon is UTC+0, 08:00 UTC = 08:00 Lisbon time, and the office day starts at 09:00 \u2014 so no, Diego's office day has not started yet at 08:00 UTC. He'd be starting an hour later.",
+      "tools": [
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains 'no'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 14,
+        "out": 430,
+        "cacheR": 49144,
+        "cacheW": 26068,
+        "total": 75656,
+        "cost_usd": 0.11899,
+        "lat_s": 18.1,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    }
+  ]
+}

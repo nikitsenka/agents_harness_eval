@@ -1,0 +1,29 @@
+# LiteLLM proxy for the ISOLATED Hindsight instance on the Hermes side.
+# Presents an OpenAI-compatible endpoint so Hindsight's own extraction LLM runs
+# on the SAME Bedrock Sonnet 4.6 as the Hermes agent (model parity). Only used by
+# the `hindsight` service — the Hermes agent itself talks Bedrock natively.
+model_list:
+  # cheap-extractor: realistic production choice for Hindsight's internal
+  # extraction/consolidation LLM (Haiku) — far cheaper than Sonnet for the
+  # mechanical memory grunt-work. Point HINDSIGHT_API_LLM_MODEL here to test the
+  # "use a cheap model" cost claim.
+  - model_name: cheap-extractor
+    litellm_params:
+      model: bedrock/us.anthropic.claude-haiku-4-5-20251001-v1:0
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_session_token: os.environ/AWS_SESSION_TOKEN
+      aws_region_name: os.environ/AWS_REGION_NAME
+  - model_name: "*"
+    litellm_params:
+      model: bedrock/us.anthropic.claude-sonnet-4-6
+      aws_access_key_id: os.environ/AWS_ACCESS_KEY_ID
+      aws_secret_access_key: os.environ/AWS_SECRET_ACCESS_KEY
+      aws_session_token: os.environ/AWS_SESSION_TOKEN
+      aws_region_name: os.environ/AWS_REGION_NAME
+
+litellm_settings:
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
