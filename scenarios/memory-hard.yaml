@@ -1,0 +1,83 @@
+# HARD memory scenarios for the Hermes memory-provider A/B.
+#
+# Design finding (validated): with transcript-grep (session_search) excluded so
+# this is a true long-term-memory test, Hermes' BUILT-IN memory consolidates to
+# the *current* state and loses history — it cannot answer "what was X before the
+# last change?". A structured memory (Hindsight) retains fact history/observations
+# and recalls the timeline. So the discriminating family is TEMPORAL / HISTORICAL
+# recall after a chain of updates. hm5 is a both-pass control (multi-hop join).
+#
+# Each scenario states a chain of casual updates across separate sessions (no
+# "remember"), then asks for a NON-CURRENT historical value in a fresh session.
+meta:
+  workspace: /workspace
+
+scenarios:
+  - id: hm1
+    group: HM
+    title: Recall the value two changes before the current one
+    reset: [memory]
+    steps:
+      - prompt: "Logging our error-budget target as we tune it. Right now it's 99.0%."
+      - prompt: "We bumped the error-budget target to 99.5%."
+      - prompt: "Update: error-budget target is now 99.9%."
+      - prompt: "Final call for this quarter — error-budget target is 99.95%."
+      - prompt: "For the postmortem timeline: what was our error-budget target two changes before the current one?"
+    checks:
+      - {type: answer_contains, value: "99.5"}
+    judge: "The target moved 99.0 -> 99.5 -> 99.9 -> 99.95 (current). 'Two changes before the current one' = 99.5%. PASS only if the answer is 99.5%. FAIL if it gives another value, says it only has the current value, or asks the user. Capability: historical recall of a superseded value."
+
+  - id: hm2
+    group: HM
+    title: Recall the original (first) value after several changes
+    reset: [memory]
+    steps:
+      - prompt: "Setting the API rate limit to 120 requests/sec for now."
+      - prompt: "Raised the API rate limit to 300 rps."
+      - prompt: "Bumped the API rate limit again — 750 rps."
+      - prompt: "API rate limit is now 2000 rps after the load-balancer upgrade."
+      - prompt: "What was the very first API rate limit we set, before any of the increases?"
+    checks:
+      - {type: answer_contains, value: "120"}
+    judge: "The API rate limit went 120 -> 300 -> 750 -> 2000. The ORIGINAL value was 120 rps. PASS only if the answer is 120 rps. FAIL if it gives a later value, only has the current value, or asks the user. Capability: recall of the earliest historical value."
+
+  - id: hm3
+    group: HM
+    title: Recall the predecessor entity in a dated rotation
+    reset: [memory]
+    steps:
+      - prompt: "On-call for week 1 of the rotation is Ana."
+      - prompt: "Week 2 on-call is Ben."
+      - prompt: "Week 3 on-call is Cara."
+      - prompt: "Week 4 on-call (the current week) is Dmitri."
+      - prompt: "Who was on-call the week before the current week?"
+    checks:
+      - {type: answer_contains, value: "Cara"}
+    judge: "On-call by week: 1=Ana, 2=Ben, 3=Cara, 4=Dmitri (current). The week before the current week (4) is week 3 = Cara. PASS only if the answer is Cara. FAIL if it gives another name, only has the current holder, or asks. Capability: ordered historical recall with explicit anchors."
+
+  - id: hm4
+    group: HM
+    title: Recall a metric two updates ago
+    reset: [memory]
+    steps:
+      - prompt: "Our seat price is $9 per user."
+      - prompt: "Seat price changed to $14 per user."
+      - prompt: "Seat price is now $22 per user."
+      - prompt: "Latest: seat price is $35 per user."
+      - prompt: "For the revenue model I'm reconstructing — what was the seat price two changes ago (not the current one)?"
+    checks:
+      - {type: answer_contains, value: "14"}
+    judge: "Seat price moved $9 -> $14 -> $22 -> $35 (current). Two changes before $35 is $14. PASS only if the answer is $14. FAIL if it gives $22/$35/$9, only has the current value, or asks. Capability: indexed historical recall."
+
+  - id: hm5
+    group: HM
+    title: Multi-hop join across separate facts (both-pass control)
+    reset: [memory]
+    steps:
+      - prompt: "Note: the payments service is owned by Diego."
+      - prompt: "Unrelated: our office plants get watered on Wednesdays, and the coffee order is every other Monday."
+      - prompt: "Also: Diego is based in the Lisbon office (UTC+0), and the Lisbon office day starts at 09:00."
+      - prompt: "If the payments service has an incident at 08:00 UTC, has its owner's office day started yet?"
+    checks:
+      - {type: answer_contains, value: "no"}
+    judge: "Join: payments -> owner Diego -> Lisbon (UTC+0) -> day starts 09:00. An 08:00 UTC incident is before 09:00, so NOT started. PASS only if the agent reasons to 'no, not yet'. FAIL otherwise. Control: a recall task both memory systems should handle."

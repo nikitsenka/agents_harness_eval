@@ -41,6 +41,35 @@ Never re-implement parsing or checks in prose.
    Each writes `results.json` (+ `metrics.csv`) with answer, tools, checks, and a
    `PENDING` verdict.
 
+### Hermes memory provider A/B (built-in vs Hindsight) — `--hindsight`
+
+A focused long-term-memory comparison for **Hermes only**, using the native
+Hindsight memory provider (`memory.provider=hindsight`) instead of built-in
+file memory. Spec: `scenarios/memory-hard.yaml` (group HM — temporal/historical
+recall after a chain of updates, where flat memory keeps only current state).
+
+- **Prereq:** isolated Hindsight up — `cd hermes && docker compose --profile
+  hindsight up -d litellm hindsight` (own LiteLLM → Bedrock parity; API on host
+  `:8889`, in-network `hindsight:8888`).
+- **Control:** `session_search` is disabled on the eval Hermes
+  (`hermes tools disable session_search`) so the test isolates the durable
+  store, not transcript grep — a real cold session wouldn't have transcripts.
+  Apply to BOTH conditions.
+- `--hindsight` flips the eval Hermes config: `memory.provider=hindsight`,
+  built-in `memory_enabled`/`user_profile_enabled` off, bank reset/inspection via
+  the Hindsight REST API; baseline restores built-in. Self-correcting + restarts
+  the gateway. Retain fires on session end; recall via `auto_recall`. Provider
+  config: `hermes/hermes-home/hindsight/config.json` (`recall_types:
+  observation,world,experience` is needed to surface per-update history).
+```bash
+HM=hm1,hm2,hm3,hm4,hm5
+python3 runners/run-eval.py --harness hermes --scenarios scenarios/memory-hard.yaml --only $HM            --no-judge --stamp <sha> --out results/hermes-builtin
+python3 runners/run-eval.py --harness hermes --scenarios scenarios/memory-hard.yaml --only $HM --hindsight --no-judge --stamp <sha> --out results/hermes-hindsight
+```
+Judge + report as below (pool the two `results.json`). Note in the report:
+Hindsight's history advantage is **real but consolidation-dependent** (it can
+collapse updates into a current-only observation), so run N≥3 for firm claims.
+
 3. **Build the blind pool** (anonymized, harness-stripped, shuffled):
    ```bash
    python3 runners/judge_pool.py build results/cc-equipped results/hermes-equipped

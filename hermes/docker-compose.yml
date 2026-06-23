@@ -64,3 +64,53 @@ services:
     environment:
       <<: *common-env
     command: ["gateway", "run"]
+
+  # --- ISOLATED Hindsight stack (Hermes memory-provider A/B) -----------------
+  # OFF by default; start with `docker compose --profile hindsight up -d`.
+  # Self-contained: its own LiteLLM (Bedrock Sonnet, model parity) + Hindsight.
+  # Hermes reaches Hindsight in-network at http://hindsight:8888; the eval driver
+  # reaches it from the host at http://localhost:8889 (reset / inspection).
+
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    container_name: hermes-eval-litellm
+    profiles: ["hindsight"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN:-}
+      AWS_REGION_NAME: ${AWS_REGION_NAME:-eu-central-1}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-eval-local}
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:4000/health/liveliness').status==200 else 1)\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    container_name: hermes-eval-hindsight
+    profiles: ["hindsight"]
+    environment:
+      HINDSIGHT_API_LLM_PROVIDER: openai
+      HINDSIGHT_API_LLM_BASE_URL: http://litellm:4000/v1
+      HINDSIGHT_API_LLM_API_KEY: ${LITELLM_MASTER_KEY:-sk-eval-local}
+      HINDSIGHT_API_LLM_MODEL: ${HINDSIGHT_LLM_MODEL:-claude-sonnet-4-6}
+      HINDSIGHT_API_EMBEDDINGS_PROVIDER: local
+      HINDSIGHT_API_WORKER_ID: hermes-hindsight
+    volumes:
+      - hindsight-pgdata:/home/hindsight/.pg0
+    ports:
+      - "127.0.0.1:8889:8888"   # host access for the eval driver (reset/inspect)
+      - "127.0.0.1:9989:9999"   # control-plane UI
+    restart: unless-stopped
+    depends_on:
+      litellm:
+        condition: service_healthy
+
+volumes:
+  hindsight-pgdata:

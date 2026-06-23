@@ -1,0 +1,166 @@
+{
+  "harness": "hermes",
+  "condition": "hindsight",
+  "stamp": "2fb509c",
+  "scenarios": [
+    {
+      "id": "hm1",
+      "group": "HM",
+      "title": "Recall the value two changes before the current one",
+      "harness": "hermes",
+      "answer": "The timeline of changes is:\n\n1. 99.0% (original)\n2. 99.5% (first change)\n3. 99.9% (current \u2014 updated June 22, 2026)\n\nTwo changes before the current one puts you at the original value: **99.0%**.",
+      "tools": [
+        "clarify",
+        "hindsight_recall",
+        "hindsight_retain",
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains '99.5'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 21,
+        "out": 1526,
+        "cacheR": 126908,
+        "cacheW": 15424,
+        "total": 143879,
+        "cost_usd": 0.11887,
+        "lat_s": 56.4,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm2",
+      "group": "HM",
+      "title": "Recall the original (first) value after several changes",
+      "harness": "hermes",
+      "answer": "The very first API rate limit was **120 requests per second**. From there it was raised to 300, then 750, and eventually to 2000 rps after a load-balancer upgrade.",
+      "tools": [
+        "hindsight_recall",
+        "hindsight_retain",
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains '120'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 21,
+        "out": 715,
+        "cacheR": 139395,
+        "cacheW": 2517,
+        "total": 142648,
+        "cost_usd": 0.06204,
+        "lat_s": 41.6,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm3",
+      "group": "HM",
+      "title": "Recall the predecessor entity in a dated rotation",
+      "harness": "hermes",
+      "answer": "The current week starts June 22, 2026 \u2014 that's Week 1, with Ana on-call. The week before (the week of June 15\u201321) would be the previous rotation cycle. Based on the stored schedule, the rotation goes Ana (Week 1) \u2192 Ben (Week 2) \u2192 Cara (Week 3) \u2192 Dmitri (Week 4), cycling back. The week before Week 1 would be Week 4, so **Dmitri** was on-call the week before the current one.",
+      "tools": [
+        "hindsight_recall",
+        "hindsight_retain"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains 'Cara'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 20,
+        "out": 603,
+        "cacheR": 126424,
+        "cacheW": 2481,
+        "total": 129528,
+        "cost_usd": 0.05633,
+        "lat_s": 41.9,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm4",
+      "group": "HM",
+      "title": "Recall a metric two updates ago",
+      "harness": "hermes",
+      "answer": "Based on my stored memory, here's the seat price history I have on record:\n\n- $9/user\n- $14/user\n- $22/user (current)\n\nTwo changes ago would be $14/user.\n\nThat said, I also see $35/user appearing in the records, which may represent a different tier or an older/parallel pricing track. If the full sequence is $9 \u2192 $14 \u2192 $22, then two changes back is $14. Want me to dig deeper into the context around any of those entries?",
+      "tools": [
+        "hindsight_recall",
+        "hindsight_retain",
+        "memory"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains '14'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 22,
+        "out": 877,
+        "cacheR": 152302,
+        "cacheW": 2653,
+        "total": 155854,
+        "cost_usd": 0.06886,
+        "lat_s": 48.5,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    },
+    {
+      "id": "hm5",
+      "group": "HM",
+      "title": "Multi-hop join across separate facts (both-pass control)",
+      "harness": "hermes",
+      "answer": "No, Diego's office day has not started yet.\n\nThe payments service is owned by Diego, who is based in the Lisbon office (UTC+0). His workday starts at 09:00 UTC, so an incident at 08:00 UTC would be one hour before his day begins.",
+      "tools": [
+        "hindsight_recall",
+        "hindsight_retain"
+      ],
+      "checks": [
+        {
+          "ok": true,
+          "desc": "answer contains 'no'",
+          "detail": ""
+        }
+      ],
+      "verdict": "PASS",
+      "judge_reason": "deterministic-only",
+      "metrics": {
+        "in": 16,
+        "out": 511,
+        "cacheR": 101177,
+        "cacheW": 1985,
+        "total": 103689,
+        "cost_usd": 0.04552,
+        "lat_s": 30.2,
+        "ctx_peak": 0,
+        "compactions": 0
+      }
+    }
+  ]
+}
